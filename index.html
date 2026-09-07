@@ -14,28 +14,36 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@500;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&display=swap">
 <style>
+/* Palette lifted from the family illustration: the scoreboard's navy panel and
+   gold lettering, the sky behind it, the turf, and the two jersey colors. */
 :root{
-  --ground:#E6E3DA; --surface:#F7F6F1; --surface-2:#EFEDE4;
-  --ink:#161915; --muted:#6C7167; --line:#C7C4B6; --line-soft:#DAD7CB;
-  --flag:#C26D18; --flag-ink:#8A4C0C; --turf:#2C563B;
-  --win:#2C6B47; --loss:#9E3B2A;
+  --ground:#E7EFF6; --surface:#F9FBFD; --surface-2:#EDF3F8;
+  --ink:#18293A; --muted:#5C7386; --line:#BFD2E1; --line-soft:#D9E4ED;
+  --flag:#B8811A; --flag-ink:#8A5F0C; --turf:#2E8C74;
+  --win:#2E8C5A; --loss:#B0432F;
+  --board:#22364A; --board-gold:#EBBE4A; --board-line:#3A5570;
+  --board-ink:#F2F6FA; --board-muted:#93AABF;
   --disp:"Big Shoulders Display","Haettenschweiler","Arial Narrow",sans-serif;
   --body:"Newsreader",Georgia,serif;
   --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
 }
 @media (prefers-color-scheme:dark){
   :root:not([data-theme="light"]){
-    --ground:#151812; --surface:#1E2219; --surface-2:#262B20;
-    --ink:#EDEBE1; --muted:#9BA18F; --line:#39402F; --line-soft:#2C3225;
-    --flag:#E9A24E; --flag-ink:#F0BC7E; --turf:#7CAF8B;
-    --win:#6FBF8E; --loss:#E08A76;
+    --ground:#132030; --surface:#1C2C3D; --surface-2:#243549;
+    --ink:#E7EFF6; --muted:#8FA6BA; --line:#2F4459; --line-soft:#25374A;
+    --flag:#E9B93B; --flag-ink:#F2CE72; --turf:#5FBBA0;
+    --win:#63C495; --loss:#E08A76;
+    --board:#1A2B3C; --board-gold:#EBBE4A; --board-line:#334C66;
+    --board-ink:#F2F6FA; --board-muted:#93AABF;
   }
 }
 :root[data-theme="dark"]{
-  --ground:#151812; --surface:#1E2219; --surface-2:#262B20;
-  --ink:#EDEBE1; --muted:#9BA18F; --line:#39402F; --line-soft:#2C3225;
-  --flag:#E9A24E; --flag-ink:#F0BC7E; --turf:#7CAF8B;
-  --win:#6FBF8E; --loss:#E08A76;
+  --ground:#132030; --surface:#1C2C3D; --surface-2:#243549;
+  --ink:#E7EFF6; --muted:#8FA6BA; --line:#2F4459; --line-soft:#25374A;
+  --flag:#E9B93B; --flag-ink:#F2CE72; --turf:#5FBBA0;
+  --win:#63C495; --loss:#E08A76;
+  --board:#1A2B3C; --board-gold:#EBBE4A; --board-line:#334C66;
+  --board-ink:#F2F6FA; --board-muted:#93AABF;
 }
 *{box-sizing:border-box}
 body{background:var(--ground);color:var(--ink);font-family:var(--body);
@@ -51,32 +59,52 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 a{color:var(--flag-ink)}
 :focus-visible{outline:2.5px solid var(--flag);outline-offset:2px;border-radius:2px}
 
-/* ---------- marquee ---------- */
-.marquee{border-bottom:3px solid var(--ink);padding:26px 0 0;margin-bottom:0}
-.marquee-top{display:flex;justify-content:space-between;gap:16px;
-  flex-wrap:wrap;padding-bottom:14px;border-bottom:1px solid var(--line)}
-.brand{display:flex;align-items:flex-end;gap:20px;flex-wrap:wrap;padding:18px 0 20px}
-h1{font-size:clamp(58px,13vw,132px);font-weight:800;line-height:.82;
-  letter-spacing:-.015em;text-transform:uppercase}
-h1 .hut{color:var(--flag);position:relative}
+/* ---------- the scoreboard ----------
+   The header is the stadium board from the illustration: navy panel, gold
+   lettering. It stays navy in both themes — a scoreboard is a dark object,
+   not a surface that follows the reader's theme. */
+.marquee{margin:0 0 0;padding:0;border:none}
+.board{display:grid;grid-template-columns:1fr minmax(0,340px);gap:28px;
+  align-items:center;background:var(--board);color:var(--board-ink);
+  border:1px solid var(--board-line);border-top:none;padding:26px 28px}
+.board-txt{min-width:0}
+.marquee-top{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;
+  padding-bottom:14px;border-bottom:1px solid var(--board-line)}
+.marquee-top .eyebrow{color:var(--board-muted)}
+h1{font-size:clamp(46px,8.5vw,92px);font-weight:800;line-height:.84;
+  letter-spacing:-.015em;text-transform:uppercase;padding-top:16px;
+  color:var(--board-ink)}
+h1 .hut{color:var(--board-gold);position:relative}
 h1 .hut::after{content:"";position:absolute;left:0;right:0;bottom:.1em;
-  height:.055em;background:var(--flag)}
-.tagline{font-family:var(--body);font-size:17px;color:var(--muted);
-  max-width:34ch;margin:0 0 6px;font-style:italic}
+  height:.055em;background:var(--board-gold)}
+.season{font-family:var(--mono);font-size:11px;font-weight:600;
+  letter-spacing:.24em;text-transform:uppercase;color:var(--board-gold);
+  margin:14px 0 0}
+.tagline{font-family:var(--body);font-size:16.5px;color:var(--board-muted);
+  max-width:36ch;margin:12px 0 0;font-style:italic}
+.board-img{display:block;width:100%;height:auto;border:2px solid var(--board-gold)}
+@media(max-width:760px){
+  .board{grid-template-columns:1fr;gap:20px;padding:22px}
+  .board-img{max-width:340px;margin:0 auto}
+}
 
-/* ---------- status strip ---------- */
+/* the readout under the board — same navy panel, gold digits */
 .strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
-  border-top:1px solid var(--line);border-bottom:3px solid var(--ink)}
-.strip div{padding:12px 16px 13px;border-right:1px solid var(--line-soft)}
+  background:var(--board);color:var(--board-ink);
+  border:1px solid var(--board-line);border-top:none;
+  border-bottom:4px solid var(--board-gold)}
+.strip div{padding:12px 16px 13px;border-right:1px solid var(--board-line)}
 .strip div:last-child{border-right:none}
 .strip .k{display:block;font-family:var(--mono);font-size:10px;font-weight:600;
-  letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:3px}
+  letter-spacing:.16em;text-transform:uppercase;color:var(--board-muted);
+  margin-bottom:3px}
 .strip .v{font-family:var(--disp);font-size:26px;font-weight:700;line-height:1;
-  text-transform:uppercase;font-variant-numeric:tabular-nums}
-.strip .v.urgent{color:var(--flag)}
-.strip .sub{display:block;font-family:var(--mono);font-size:10px;color:var(--muted);
-  letter-spacing:.04em;margin-top:5px;white-space:nowrap;overflow:hidden;
-  text-overflow:ellipsis}
+  text-transform:uppercase;font-variant-numeric:tabular-nums;
+  color:var(--board-gold)}
+.strip .v.urgent{color:#FF9159}
+.strip .sub{display:block;font-family:var(--mono);font-size:10px;
+  color:var(--board-muted);letter-spacing:.04em;margin-top:5px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 /* ---------- submission confirmation ---------- */
 .confirm{display:flex;gap:13px;align-items:flex-start;margin-bottom:26px;
@@ -532,13 +560,17 @@ details[open] summary::before{content:"▾ "}
 </nav>
 
 <header class="marquee">
-  <div class="marquee-top">
-    <span class="eyebrow">Indacochea &middot; Sobel &middot; Sebso</span>
-    <span class="eyebrow" id="seasonTag">Inaugural Season &middot; 2026</span>
-  </div>
-  <div class="brand">
-    <h1>Turbo Set<br><span class="hut">Hut</span></h1>
-    <p class="tagline">Straight up, no spreads. Primetime counts triple. Somebody has to live in the cellar.</p>
+  <div class="board" id="board">
+    <div class="board-txt">
+      <div class="marquee-top">
+        <span class="eyebrow">Indacochea &middot; Sobel &middot; Sebso</span>
+      </div>
+      <h1>Turbo Set<br><span class="hut">Hut</span></h1>
+      <p class="season" id="seasonTag">2026 Inaugural Season</p>
+      <p class="tagline">Straight up, no spreads. Primetime counts triple. Somebody has to live in the cellar.</p>
+    </div>
+    <img class="board-img" id="heroImg" src="hero.jpeg" width="928" height="1145"
+         alt="The family drawn as a football team on the field, under a stadium scoreboard reading Turbo Set Hut.">
   </div>
 </header>
 
@@ -727,7 +759,7 @@ details[open] summary::before{content:"▾ "}
 
 <script>
 /* Shown in the footer so you can tell at a glance which build is live. */
-var BUILD = "v12 · 7 Sep";
+var BUILD = "v13 · 7 Sep";
 
 var T = {
   ARI:["Arizona","Cardinals","#97233F"], ATL:["Atlanta","Falcons","#A71930"],
@@ -858,7 +890,7 @@ function lastGradedWeek(){
 /* ---------- status strip ---------- */
 function renderStrip(){
   var w = cur();
-  $("#seasonTag").textContent = "Inaugural Season · " + S.season;
+  $("#seasonTag").textContent = S.season + " Inaugural Season";
   if(!w){ return; }
   $("#stWeek").textContent = "Wk " + String(w.n).padStart(2,"0");
   var open = w.games.filter(function(g){ return !locked(g); })
@@ -1139,33 +1171,73 @@ function showSlip(){
 /* ---------- submission confirmation ----------
    Per-device only: this browser knows what it sent, nothing more. It never
    claims a pick is locked — only kickoff does that. */
+/* Pull this player's submitted picks out of the spreadsheet and into the board,
+   so re-selecting your name shows what Ricardo actually has — on any device,
+   days later. Local edits win: a game you have already tapped is left alone. */
+function seedFromServer(){
+  var w = cur(); if(!w || !me) return 0;
+  var onFile = (w.picks || {})[me]; if(!onFile) return 0;
+  var mine = myPicks[w.n] || (myPicks[w.n] = {}), n = 0;
+  w.games.forEach(function(g){
+    if(!mine[g.id] && onFile[g.id]){ mine[g.id] = onFile[g.id]; n++; }
+  });
+  if(n) remember();
+  return n;
+}
+
 function renderConfirm(){
   var w = cur(), b = $("#subBanner");
-  if(!w){ b.hidden = true; return; }
-  var s = submitted[w.n];
-  if(!s || typeof s !== "object"){ b.hidden = true; return; }
+  if(!w || !me){ b.hidden = true; return; }
   var mine = myPicks[w.n] || {};
-  var changed = code(w, mine) !== s.code;
+  var onFile = (w.picks || {})[me];
+  var s = submitted[w.n];
   var openLeft = w.games.filter(function(g){ return !locked(g); }).length;
-  var when = new Date(s.at).toLocaleString([], { weekday:"short", hour:"numeric",
-    minute:"2-digit" });
 
-  b.hidden = false;
-  b.className = "confirm" + (changed ? " stale" : "");
-  b.textContent = "";
-  b.appendChild(el("span","tick", changed ? "!" : "✓"));
-  var box = el("div");
-  if(changed){
-    box.appendChild(el("b", null, "You have changed picks since you submitted"));
-    box.appendChild(el("p", null, "Your last slip went in " + when + ". Ricardo still has the old picks — send an updated slip and he will take the newer one, since the last submission before kickoff is the one that counts."));
-  } else {
-    box.appendChild(el("b", null, "Week " + w.n + " submitted as " + s.who));
-    box.appendChild(el("p", null, "Sent " + when + " with " + s.n + " of " +
-      w.games.length + " games. " + (openLeft
-        ? "You can still change any of the " + openLeft + " games that have not kicked off — just submit again."
-        : "Every game has kicked off. Nothing left to change.")));
+  /* the spreadsheet is the real record; localStorage is only a fallback for
+     the minutes before Google's cache catches up */
+  if(onFile){
+    var nOn = w.games.filter(function(g){ return onFile[g.id]; }).length;
+    var raw = (w.subAt || {})[me], d = raw ? new Date(raw) : null;
+    var when = d && !isNaN(d)
+      ? d.toLocaleString([], { weekday:"short", month:"numeric", day:"numeric",
+          hour:"numeric", minute:"2-digit" })
+      : null;
+    var differs = w.games.some(function(g){
+      return mine[g.id] && onFile[g.id] !== mine[g.id];
+    });
+    b.hidden = false;
+    b.className = "confirm" + (differs ? " stale" : "");
+    b.textContent = "";
+    b.appendChild(el("span","tick", differs ? "!" : "✓"));
+    var box = el("div");
+    if(differs){
+      box.appendChild(el("b", null, "You have changed picks since you last sent them"));
+      box.appendChild(el("p", null, "Ricardo still has your earlier slip" +
+        (when ? " from " + when : "") + ". Send again and he takes the newer one — the last submission before kickoff counts."));
+    } else {
+      box.appendChild(el("b", null, "Ricardo has your Week " + w.n + " picks"));
+      box.appendChild(el("p", null, nOn + " of " + w.games.length + " games" +
+        (when ? ", received " + when : "") + ". They are filled in below. " +
+        (openLeft
+          ? "Change anything that has not kicked off and send again."
+          : "Every game has kicked off — nothing left to change.")));
+    }
+    b.appendChild(box);
+    return;
   }
-  b.appendChild(box);
+
+  if(!s || typeof s !== "object"){ b.hidden = true; return; }
+  var when2 = new Date(s.at).toLocaleString([], { weekday:"short",
+    hour:"numeric", minute:"2-digit" });
+  b.hidden = false;
+  b.className = "confirm";
+  b.textContent = "";
+  b.appendChild(el("span","tick", "✓"));
+  var box2 = el("div");
+  box2.appendChild(el("b", null, "Week " + w.n + " sent"));
+  box2.appendChild(el("p", null, "Sent " + when2 + " with " + s.n + " of " +
+    w.games.length + " games. It can take a few minutes to show up as received."));
+  b.appendChild(box2);
 }
 
 /* ---------- reading the responses spreadsheet ----------
@@ -1234,6 +1306,10 @@ function applyRows(rows){
     });
     w.picks = w.picks || {};
     w.picks[who] = Object.assign(w.picks[who] || {}, picks);
+    /* remember when each player's latest slip landed, so the site can tell
+       them what Ricardo actually has on file */
+    w.subAt = w.subAt || {};
+    if(iTime > -1 && row[iTime]) w.subAt[who] = row[iTime];
     n++;
   }
   WALL = wall.reverse();   /* newest first */
@@ -1260,7 +1336,7 @@ function livePosts(){
   return PENDING.concat(WALL);
 }
 
-var AVATAR = ["#2C563B","#8A4C0C","#3B4E76","#6B2F4A","#4A5A2C","#7A3B2A"];
+var AVATAR = ["#2E8C74","#4176B8","#B8811A","#3C6E8F","#7A4F86","#4F8C3A"];
 function avatarColor(name){
   var h = 0;
   for(var i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
@@ -1342,6 +1418,7 @@ async function syncPicks(){
     var n = applyRows(parseCSV(await res.text()));
     syncNote(n ? n + " pick slips read from the spreadsheet"
                : "Spreadsheet reached — no picks submitted yet");
+    seedFromServer();
     renderStandings(); renderWeek(); renderStrip(); renderWall();
   } catch(e){
     renderWall();
@@ -1592,10 +1669,13 @@ $("#btnSave").addEventListener("click", async function(){
 $("#whoSel").addEventListener("change", function(){
   me = this.value || null; remember();
   this.setAttribute("data-empty", me ? "0" : "1");
-  $("#whoHint").textContent = me
-    ? "picks and posts will go up under your name"
-    : "pick your name to make picks or post";
-  renderWeek(); renderStandings();
+  /* bring back whatever they already sent for this week */
+  var n = seedFromServer();
+  $("#whoHint").textContent = !me
+    ? "pick your name to make picks or post"
+    : n ? "your submitted picks are filled in below"
+        : "picks and posts will go up under your name";
+  renderWeek(); renderStandings(); renderWall();
 });
 $("#btnReview").addEventListener("click", function(){ showSlip(); });
 $("#btnEdit").addEventListener("click", function(){ $("#slipBox").hidden = true; });
@@ -1658,6 +1738,14 @@ if(!IN_ARTIFACT){
     "the web address never changes.";
 }
 $("#footBuild").textContent = BUILD;
+
+/* The illustration sits next to the HTML on the web host. If it is missing —
+   or this is the Claude copy, where a relative path does not resolve — the
+   board falls back to type alone rather than showing a broken image. */
+$("#heroImg").addEventListener("error", function(){
+  this.remove();
+  $("#board").style.gridTemplateColumns = "1fr";
+});
 renderStrip(); renderWeek(); renderStandings(); renderWall(); show("picks");
 $("#whoSel").setAttribute("data-empty", me ? "0" : "1");
 if(me) $("#whoHint").textContent = "picks and posts will go up under your name";
