@@ -66,12 +66,15 @@ a{color:var(--flag-ink)}
 .marquee{margin:0 0 0;padding:0;border:none}
 /* The illustration is sized by the text beside it, not the other way round —
    the whole board has to clear the fold so the name picker is visible on load. */
-/* text takes the left ~80%, the art gets a fixed 20% column and sets its own
-   height from that width so the drawing is never stretched or cropped */
-.board{display:grid;grid-template-columns:minmax(0,1fr) 20%;gap:24px;
-  align-items:center;background:var(--board);color:var(--board-ink);
-  border:1px solid var(--board-line);border-top:none;padding:22px 26px}
-.board-txt{min-width:0}
+/* Two rows on the left — the title block, then the readout — and the art in a
+   column beside them spanning both, so it runs the full height of the board.
+   Its width comes from that height via aspect-ratio, so nothing is stretched. */
+.board{display:grid;grid-template-columns:minmax(0,1fr) auto;
+  grid-template-rows:auto auto;gap:0 24px;align-items:stretch;
+  background:var(--board);color:var(--board-ink);
+  border:1px solid var(--board-line);border-top:none;
+  border-bottom:4px solid var(--board-gold);padding:22px 26px}
+.board-txt{min-width:0;grid-column:1;grid-row:1;padding-bottom:16px}
 .marquee-top{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;
   padding-bottom:14px;border-bottom:1px solid var(--board-line)}
 .marquee-top .eyebrow{color:var(--board-muted)}
@@ -95,23 +98,28 @@ h1 .hut::after{content:"";position:absolute;left:0;right:.06em;bottom:.08em;
    grid row and then height:100% just measures itself — the image keeps winning.
    The wrapper has no intrinsic height, so the text column sets the row; the
    wrapper stretches to it and aspect-ratio derives the width from that height. */
-.board-art{position:relative;width:100%;height:auto;aspect-ratio:928 / 1145;
-  justify-self:end;align-self:center;
+.board-art{grid-column:2;grid-row:1 / span 2;position:relative;
+  height:100%;width:auto;aspect-ratio:928 / 1145;max-width:min(320px,32vw);
+  justify-self:end;align-self:stretch;
   border:2px solid var(--board-gold);overflow:hidden}
 .board-art img{position:absolute;inset:0;display:block;width:100%;height:100%;
   object-fit:contain}
 @media(max-width:760px){
-  .board{grid-template-columns:1fr;gap:18px;padding:20px}
-  .board-art{height:auto;width:100%;max-width:240px;justify-self:center;
-    margin:0 auto}
+  .board{grid-template-columns:1fr;grid-template-rows:auto auto auto;
+    gap:16px 0;padding:20px}
+  .board-txt{grid-row:1;padding-bottom:0}
+  .board-art{grid-column:1;grid-row:2;height:auto;width:100%;max-width:230px;
+    justify-self:center;align-self:center}
+  .strip{grid-column:1;grid-row:3}
+  .strip div:first-child{padding-left:16px}
 }
 
-/* the readout under the board — same navy panel, gold digits */
-.strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
-  background:var(--board);color:var(--board-ink);
-  border:1px solid var(--board-line);border-top:none;
-  border-bottom:4px solid var(--board-gold)}
-.strip div{padding:12px 16px 13px;border-right:1px solid var(--board-line)}
+/* the readout, sitting in the board's lower-left row */
+.strip{grid-column:1;grid-row:2;align-self:end;
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
+  border-top:1px solid var(--board-line)}
+.strip div{padding:13px 16px 2px;border-right:1px solid var(--board-line)}
+.strip div:first-child{padding-left:0}
 .strip div:last-child{border-right:none}
 .strip .k{display:block;font-family:var(--mono);font-size:10px;font-weight:600;
   letter-spacing:.16em;text-transform:uppercase;color:var(--board-muted);
@@ -647,19 +655,18 @@ details[open] summary::before{content:"▾ "}
       <p class="season" id="seasonTag">2026 Inaugural Season</p>
       <p class="tagline">Straight up, no spreads. Primetime counts triple. Somebody has to live in the cellar.</p>
     </div>
+    <div class="strip">
+      <div><span class="k">Week</span><span class="v" id="stWeek">&mdash;</span></div>
+      <div><span class="k">Next Lock</span><span class="v" id="stNext">&mdash;</span><span class="sub" id="stNextGame"></span></div>
+      <div><span class="k">Points On The Table</span><span class="v" id="stPts">&mdash;</span></div>
+      <div><span class="k">Leader</span><span class="v" id="stLead">&mdash;</span></div>
+    </div>
     <div class="board-art" id="boardArt">
       <img id="heroImg" src="hero.jpeg" width="928" height="1145"
            alt="The family drawn as a football team on the field, under a stadium scoreboard reading Turbo Set Hut.">
     </div>
   </div>
 </header>
-
-<div class="strip">
-  <div><span class="k">Week</span><span class="v" id="stWeek">&mdash;</span></div>
-  <div><span class="k">Next Lock</span><span class="v" id="stNext">&mdash;</span><span class="sub" id="stNextGame"></span></div>
-  <div><span class="k">Points On The Table</span><span class="v" id="stPts">&mdash;</span></div>
-  <div><span class="k">Leader</span><span class="v" id="stLead">&mdash;</span></div>
-</div>
 
 <div class="whobar">
   <span class="lbl"><label for="whoSel">You are</label></span>
@@ -849,7 +856,7 @@ details[open] summary::before{content:"▾ "}
 
 <script>
 /* Shown in the footer so you can tell at a glance which build is live. */
-var BUILD = "v23 · 7 Sep";
+var BUILD = "v24 · 7 Sep";
 
 var T = {
   ARI:["Arizona","Cardinals","#97233F"], ATL:["Atlanta","Falcons","#A71930"],
