@@ -64,15 +64,17 @@ a{color:var(--flag-ink)}
    lettering. It stays navy in both themes — a scoreboard is a dark object,
    not a surface that follows the reader's theme. */
 .marquee{margin:0 0 0;padding:0;border:none}
-.board{display:grid;grid-template-columns:1fr minmax(0,340px);gap:28px;
-  align-items:center;background:var(--board);color:var(--board-ink);
-  border:1px solid var(--board-line);border-top:none;padding:26px 28px}
+/* The illustration is sized by the text beside it, not the other way round —
+   the whole board has to clear the fold so the name picker is visible on load. */
+.board{display:grid;grid-template-columns:1fr auto;gap:26px;
+  align-items:stretch;background:var(--board);color:var(--board-ink);
+  border:1px solid var(--board-line);border-top:none;padding:22px 26px}
 .board-txt{min-width:0}
 .marquee-top{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;
   padding-bottom:14px;border-bottom:1px solid var(--board-line)}
 .marquee-top .eyebrow{color:var(--board-muted)}
-h1{font-size:clamp(46px,8.5vw,92px);font-weight:800;line-height:1.02;
-  letter-spacing:-.005em;padding-top:16px;color:var(--board-ink)}
+h1{font-size:clamp(40px,6.6vw,72px);font-weight:800;line-height:1.02;
+  letter-spacing:-.005em;padding-top:12px;color:var(--board-ink)}
 h1 .hut{color:var(--board-gold);position:relative}
 h1 .hut::after{content:"";position:absolute;left:0;right:0;bottom:.1em;
   height:.055em;background:var(--board-gold)}
@@ -81,10 +83,14 @@ h1 .hut::after{content:"";position:absolute;left:0;right:0;bottom:.1em;
   margin:14px 0 0}
 .tagline{font-family:var(--body);font-size:16.5px;color:var(--board-muted);
   max-width:36ch;margin:12px 0 0;font-style:italic}
-.board-img{display:block;width:100%;height:auto;border:2px solid var(--board-gold)}
+/* stretched to the text block's height; contain keeps every face in frame */
+.board-img{display:block;align-self:stretch;height:100%;width:auto;
+  max-width:min(300px,32vw);object-fit:contain;object-position:center;
+  justify-self:end;border:2px solid var(--board-gold)}
 @media(max-width:760px){
-  .board{grid-template-columns:1fr;gap:20px;padding:22px}
-  .board-img{max-width:340px;margin:0 auto}
+  .board{grid-template-columns:1fr;gap:18px;padding:20px}
+  .board-img{height:auto;width:100%;max-width:260px;margin:0 auto;
+    justify-self:center}
 }
 
 /* the readout under the board — same navy panel, gold digits */
@@ -811,7 +817,7 @@ details[open] summary::before{content:"▾ "}
 
 <script>
 /* Shown in the footer so you can tell at a glance which build is live. */
-var BUILD = "v18 · 7 Sep";
+var BUILD = "v20 · 7 Sep";
 
 var T = {
   ARI:["Arizona","Cardinals","#97233F"], ATL:["Atlanta","Falcons","#A71930"],
@@ -1429,10 +1435,22 @@ function applyRows(rows){
       iWeek = col("week"), iTime = col("timestamp");
   if(iName < 0 || iPicks < 0) return 0;
   var n = 0, wall = [];
-  /* rows arrive oldest-first, so a later slip merges over an earlier one —
-     which is exactly the rule: the last submission before kickoff counts */
-  for(var r = 1; r < rows.length; r++){
-    var row = rows[r]; if(!row || !row[iName]) continue;
+
+  /* A later slip must overwrite an earlier one game by game — that is the whole
+     rule: your last pick before kickoff is the one that counts. Google appends
+     rows in order, but the sheet can be sorted by hand, so order the rows by
+     their own timestamp rather than trusting the file. Only when every row has
+     a readable timestamp; otherwise the file's order is the best guess there is. */
+  var data = rows.slice(1).map(function(r, i){
+    var t = (iTime > -1 && r && r[iTime]) ? new Date(r[iTime]).getTime() : NaN;
+    return { row:r, i:i, t:t };
+  });
+  if(data.length && data.every(function(d){ return !isNaN(d.t); })){
+    data.sort(function(a, b){ return a.t - b.t || a.i - b.i; });
+  }
+
+  for(var r = 0; r < data.length; r++){
+    var row = data[r].row; if(!row || !row[iName]) continue;
     var who = row[iName].trim();
     if(S.players.indexOf(who) < 0) continue;
     var body = String(row[iPicks] || "");
