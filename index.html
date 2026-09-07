@@ -73,24 +73,36 @@ a{color:var(--flag-ink)}
 .marquee-top{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;
   padding-bottom:14px;border-bottom:1px solid var(--board-line)}
 .marquee-top .eyebrow{color:var(--board-muted)}
-h1{font-size:clamp(40px,6.6vw,72px);font-weight:800;line-height:1.02;
-  letter-spacing:-.005em;padding-top:12px;color:var(--board-ink)}
-h1 .hut{color:var(--board-gold);position:relative}
-h1 .hut::after{content:"";position:absolute;left:0;right:0;bottom:.1em;
-  height:.055em;background:var(--board-gold)}
+/* The name is a snap count, so set it as one: two held beats stepping to the
+   right, then the snap — bigger, gold, and the only thing shouting. */
+h1{font-size:clamp(40px,6.6vw,72px);font-weight:800;line-height:.98;
+  letter-spacing:-.005em;padding-top:12px;color:var(--board-ink);
+  display:flex;flex-direction:column;align-items:flex-start}
+h1 .beat{font-size:.46em;font-weight:700;letter-spacing:.015em;
+  color:var(--board-muted)}
+h1 .beat.drawl{margin-left:.62em;color:var(--board-ink)}
+h1 .hut{margin-left:1.3em;color:var(--board-gold);position:relative;
+  letter-spacing:-.02em}
+h1 .hut::after{content:"";position:absolute;left:0;right:.06em;bottom:.08em;
+  height:.06em;background:var(--board-gold)}
 .season{font-family:var(--mono);font-size:11px;font-weight:600;
   letter-spacing:.24em;text-transform:uppercase;color:var(--board-gold);
   margin:14px 0 0}
 .tagline{font-family:var(--body);font-size:16.5px;color:var(--board-muted);
   max-width:36ch;margin:12px 0 0;font-style:italic}
-/* stretched to the text block's height; contain keeps every face in frame */
-.board-img{display:block;align-self:stretch;height:100%;width:auto;
-  max-width:min(300px,32vw);object-fit:contain;object-position:center;
-  justify-self:end;border:2px solid var(--board-gold)}
+/* An <img> in normal flow contributes its own intrinsic height, so it sizes the
+   grid row and then height:100% just measures itself — the image keeps winning.
+   The wrapper has no intrinsic height, so the text column sets the row; the
+   wrapper stretches to it and aspect-ratio derives the width from that height. */
+.board-art{position:relative;align-self:stretch;justify-self:end;
+  height:100%;width:auto;aspect-ratio:928 / 1145;max-width:min(300px,32vw);
+  border:2px solid var(--board-gold);overflow:hidden}
+.board-art img{position:absolute;inset:0;display:block;width:100%;height:100%;
+  object-fit:contain}
 @media(max-width:760px){
   .board{grid-template-columns:1fr;gap:18px;padding:20px}
-  .board-img{height:auto;width:100%;max-width:260px;margin:0 auto;
-    justify-self:center}
+  .board-art{height:auto;width:100%;max-width:240px;justify-self:center;
+    margin:0 auto}
 }
 
 /* the readout under the board — same navy panel, gold digits */
@@ -404,7 +416,17 @@ details[open] summary::before{content:"▾ "}
 .cg button{border:1.5px solid var(--line);padding:4px 9px;font-family:var(--mono);
   font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase}
 .cg button.on{border-color:var(--ink);background:var(--ink);color:var(--ground)}
-.cg button.tri.on{border-color:var(--flag);background:var(--flag);color:#fff}
+.cg button.tie{border-style:dashed}
+.cg button.tie.on{border-color:var(--flag);border-style:solid;
+  background:var(--flag);color:#fff}
+.ptsedit{display:flex;align-items:center;gap:6px;flex:none;
+  border-left:1px solid var(--line-soft);padding-left:11px}
+.ptsedit .lbl{font-family:var(--mono);font-size:10px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--muted)}
+.ptsedit input{width:62px;padding:5px 7px;font-family:var(--mono);font-size:13px;
+  font-weight:600;text-align:center;border:1.5px solid var(--line);
+  background:var(--ground);color:var(--ink)}
+.ptsedit input:focus{border-color:var(--flag)}
 .foot{border-top:1px solid var(--line);margin-top:44px;padding:18px 0 0;
   font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:.04em;
   display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap}
@@ -616,12 +638,18 @@ details[open] summary::before{content:"▾ "}
       <div class="marquee-top">
         <span class="eyebrow">Indacochea &middot; Sobel &middot; Sebso</span>
       </div>
-      <h1>Turbo Set<br><span class="hut">Hut</span></h1>
+      <h1 aria-label="Turbo Set Hut">
+        <span class="beat" aria-hidden="true">Turbo.</span>
+        <span class="beat drawl" aria-hidden="true">Set&hellip;</span>
+        <span class="hut" aria-hidden="true">Hut!</span>
+      </h1>
       <p class="season" id="seasonTag">2026 Inaugural Season</p>
       <p class="tagline">Straight up, no spreads. Primetime counts triple. Somebody has to live in the cellar.</p>
     </div>
-    <img class="board-img" id="heroImg" src="hero.jpeg" width="928" height="1145"
-         alt="The family drawn as a football team on the field, under a stadium scoreboard reading Turbo Set Hut.">
+    <div class="board-art" id="boardArt">
+      <img id="heroImg" src="hero.jpeg" width="928" height="1145"
+           alt="The family drawn as a football team on the field, under a stadium scoreboard reading Turbo Set Hut.">
+    </div>
   </div>
 </header>
 
@@ -732,49 +760,52 @@ details[open] summary::before{content:"▾ "}
   </div>
 
   <div id="commPanel" hidden>
-    <div class="sec-head"><h2>Commissioner</h2><span class="eyebrow" id="saveState">Nothing to save</span></div>
+    <div class="sec-head"><h2>Results</h2><span class="eyebrow" id="saveState">Nothing to save</span></div>
     <div class="notice" id="commNotice" hidden><b></b><span></span></div>
 
-    <div class="window-head"><span class="name">1 &middot; Connect the Google Form</span><span class="rule"></span></div>
-    <ol class="steps">
-      <li>Make one Google Form with three questions, in this order: <b>Your name</b> (multiple choice, one option per player), <b>Week</b> (short answer), <b>Picks</b> (paragraph). Turn on <b>Collect email addresses</b> so you get a timestamp and a sender.</li>
-      <li>In the form's &#8942; menu choose <b>Get pre-filled link</b>. Pick <em>any</em> player for the name question, and answer the other two with the literal words <b>WEEK</b> and <b>PICKS</b>. Click <b>Get link</b>, then copy it.</li>
-      <li>Paste it below. The site reads the question IDs out of it, and from then on every player lands on the form with their picks already filled in &mdash; they just press Submit.</li>
-    </ol>
-    <div class="field"><label for="prefillIn">Pre-filled link</label>
-      <input type="url" id="prefillIn" placeholder="https://docs.google.com/forms/d/e/&hellip;/viewform?usp=pp_url&amp;entry.123=NAME&amp;&hellip;"></div>
-    <div class="row"><button class="btn sm" id="btnPrefill">Read the link</button>
-      <span class="eyebrow" id="formState">Not connected</span></div>
-
-    <div class="field"><label for="csvIn">Responses spreadsheet &mdash; published CSV link</label>
-      <input type="url" id="csvIn" placeholder="https://docs.google.com/spreadsheets/d/e/&hellip;/pub?output=csv"></div>
-    <div class="row"><button class="btn sm" id="btnCsv">Read the spreadsheet</button>
-      <span class="eyebrow" id="syncState">Not checked yet</span></div>
-
-    <div class="window-head"><span class="name">2 &middot; Set the week</span><span class="rule"></span></div>
     <div class="row">
-      <label class="eyebrow" for="commWeekSel" style="margin:0">Editing</label>
+      <label class="eyebrow" for="commWeekSel" style="margin:0">Week</label>
       <select id="commWeekSel"></select>
-      <button class="btn ghost sm" id="btnNewWeek">Start a new week</button>
+      <span class="eyebrow" id="syncState">Not checked yet</span>
     </div>
-    <div class="field"><label for="pasteIn">Paste a slate &mdash; one game per line, <span style="text-transform:none;letter-spacing:0">e.g.</span> <span style="text-transform:none;letter-spacing:0">Sun 9/20 1:00p Bears at Lions</span></label>
-      <textarea id="pasteIn" rows="5" placeholder="Thu 9/17 8:15p Commanders at Packers&#10;Sun 9/20 1:00p Bears at Lions&#10;Sun 9/20 8:20p Chiefs at Eagles&#10;Mon 9/21 8:15p Rams at 49ers"></textarea></div>
-    <div class="row"><button class="btn sm" id="btnParse">Load these games</button>
-      <span class="eyebrow">Times are Eastern. Sunday and Monday night games are set to 3 points automatically.</span></div>
+    <p class="lede" style="font-size:15.5px">Click the team that won. If the game ended in a tie, click <b>Tie</b> &mdash; everyone who picked that game takes half its points. The number on the right is what a correct pick is worth; change it for a game worth more or less than usual.</p>
 
-    <div class="window-head"><span class="name">3 &middot; Results and point values</span><span class="rule"></span></div>
     <div class="commgames" id="commGames"></div>
 
-    <div class="window-head"><span class="name">4 &middot; Import picks from the spreadsheet</span><span class="rule"></span></div>
-    <p class="lede" style="font-size:15.5px">Open the form's responses sheet, copy the rows, paste them here. Each pick slip carries a short code the site can read, so you do not have to type anybody's picks by hand.</p>
-    <div class="field"><textarea id="importIn" rows="5" placeholder="Paste response rows here"></textarea></div>
-    <div class="row"><button class="btn sm" id="btnImport">Import</button>
-      <span class="eyebrow" id="importState"></span></div>
+    <div class="row" style="margin-top:22px">
+      <button class="btn go" id="btnSave">Save and publish</button>
+      <span class="eyebrow" id="pubState"></span>
+    </div>
+    <p class="lede" style="font-size:15px;margin-top:8px" id="pubHelp">Saving publishes a new version of this page for everyone holding the link. Only people with edit access can save.</p>
 
-    <div class="window-head"><span class="name">5 &middot; Publish</span><span class="rule"></span></div>
-    <p class="lede" style="font-size:15.5px" id="pubHelp">Saving publishes a new version of this page for everyone holding the link. Only people with edit access can save.</p>
-    <div class="row"><button class="btn go" id="btnSave">Save and publish</button>
-      <span class="eyebrow" id="pubState"></span></div>
+    <details style="margin-top:30px">
+      <summary>Schedule and setup</summary>
+      <div style="padding-top:18px">
+        <div class="window-head"><span class="name">Load a week's games</span><span class="rule"></span></div>
+        <div class="row"><button class="btn ghost sm" id="btnNewWeek">Start a new week</button>
+          <span class="eyebrow">Weeks 1 to 8 are already loaded</span></div>
+        <div class="field"><label for="pasteIn">Paste a slate &mdash; one game per line, <span style="text-transform:none;letter-spacing:0">e.g. Sun 9/20 1:00p Bears at Lions</span></label>
+          <textarea id="pasteIn" rows="4" placeholder="Thu 9/17 8:15p Commanders at Packers&#10;Sun 9/20 1:00p Bears at Lions&#10;Sun 9/20 8:20p Chiefs at Eagles&#10;Mon 9/21 8:15p Rams at 49ers"></textarea></div>
+        <div class="row"><button class="btn sm" id="btnParse">Load these games</button>
+          <span class="eyebrow">Times are Eastern. Sunday and Monday night games get 3 points automatically.</span></div>
+
+        <div class="window-head"><span class="name">Google Form connection</span><span class="rule"></span></div>
+        <p class="lede" style="font-size:15px">Already connected. You only need these if the form is ever rebuilt.</p>
+        <div class="field"><label for="prefillIn">Pre-filled form link</label>
+          <input type="url" id="prefillIn" placeholder="https://docs.google.com/forms/d/e/&hellip;/viewform?usp=pp_url&amp;&hellip;"></div>
+        <div class="row"><button class="btn sm" id="btnPrefill">Read the link</button>
+          <span class="eyebrow" id="formState">Not connected</span></div>
+        <div class="field"><label for="csvIn">Responses spreadsheet &mdash; published CSV link</label>
+          <input type="url" id="csvIn" placeholder="https://docs.google.com/spreadsheets/d/e/&hellip;/pub?output=csv"></div>
+        <div class="row"><button class="btn sm" id="btnCsv">Read the spreadsheet</button></div>
+
+        <div class="window-head"><span class="name">Paste picks by hand</span><span class="rule"></span></div>
+        <p class="lede" style="font-size:15px">Picks arrive from the spreadsheet on their own. This is only for a slip that came in some other way &mdash; paste the rows here.</p>
+        <div class="field"><textarea id="importIn" rows="3" placeholder="Paste response rows here"></textarea></div>
+        <div class="row"><button class="btn sm" id="btnImport">Import</button>
+          <span class="eyebrow" id="importState"></span></div>
+      </div>
+    </details>
   </div>
 </section>
 
@@ -817,7 +848,7 @@ details[open] summary::before{content:"▾ "}
 
 <script>
 /* Shown in the footer so you can tell at a glance which build is live. */
-var BUILD = "v20 · 7 Sep";
+var BUILD = "v22 · 7 Sep";
 
 var T = {
   ARI:["Arizona","Cardinals","#97233F"], ATL:["Atlanta","Falcons","#A71930"],
@@ -919,13 +950,19 @@ function standings(){
 
     Object.keys(w.picks || {}).forEach(function(p){
       var r = byName[p]; if(!r) return;
-      var mine = w.picks[p], wkPts = 0, wkRight = 0;
+      var mine = w.picks[p], wkPts = 0, wkRight = 0, wkTied = 0;
       done.forEach(function(g){
         var pick = mine[g.id]; if(!pick) return;
         r.graded++;
-        if(pick === g.winner){ r.right++; wkRight++; wkPts += g.pts; }
+        if(g.winner === "TIE"){
+          /* nobody could call a tie, so anyone who picked takes half */
+          r.right += 0.5; wkTied++; wkPts += g.pts / 2;
+        } else if(pick === g.winner){
+          r.right++; wkRight++; wkPts += g.pts;
+        }
       });
-      if(weekComplete && wkRight === w.games.length){
+      /* a tied game cannot be "got right", so it does not spoil a clean sweep */
+      if(weekComplete && wkRight + wkTied === w.games.length){
         wkPts += PERFECT_BONUS; r.perfect++;
       }
       r.pts += wkPts;
@@ -1025,8 +1062,10 @@ function gameRow(g, w, mine){
 
   var meta = el("div","gmeta");
   meta.appendChild(el("span",null,fmtKick(g)));
-  meta.appendChild(el("span","pts", g.pts===3 ? "×3 primetime" : "1 pt"));
-  if(g.winner) meta.appendChild(el("span","lockchip","Final"));
+  meta.appendChild(el("span","pts", g.pts + (g.pts === 1 ? " pt" : " pts") +
+    (g.pts === 3 ? " · primetime" : "")));
+  if(g.winner === "TIE") meta.appendChild(el("span","lockchip","Tie · half points"));
+  else if(g.winner) meta.appendChild(el("span","lockchip","Final"));
   else if(lk) meta.appendChild(el("span","lockchip","Locked"));
   body.appendChild(meta);
 
@@ -1047,7 +1086,8 @@ function gameRow(g, w, mine){
       b.style.borderColor = t[2];
       b.style.color = dark(t[2]) ? "#FFFFFF" : "#14170F";
     }
-    if(g.winner){
+    /* a tie marks nobody right and nobody wrong */
+    if(g.winner && g.winner !== "TIE"){
       if(g.winner === ab) b.classList.add("winner");
       if(mine[g.id] === ab) b.classList.add(mine[g.id] === g.winner ? "correct" : "wrong");
     }
@@ -1157,11 +1197,13 @@ function renderStandings(){
     var bc = el("td","barcell"), m = el("div","meter"), fill = el("i");
     fill.style.width = (r.pts/max*100 || 0) + "%"; m.appendChild(fill);
     bc.appendChild(m); tr.appendChild(bc);
-    tr.appendChild(el("td",null, r.graded ? r.right + "/" + r.graded : "—"));
+    /* half-credit from ties means this can land on a .5 */
+    var rightTxt = (r.right % 1 ? r.right.toFixed(1) : String(r.right));
+    tr.appendChild(el("td",null, r.graded ? rightTxt + "/" + r.graded : "—"));
     tr.appendChild(el("td",null, r.graded ? Math.round(r.right/r.graded*100)+"%" : "—"));
     tr.appendChild(el("td",null, r.perfect ? "★ " + r.perfect : (any ? "0" : "—")));
-    tr.appendChild(el("td",null, lg ? String(r.last) : "—"));
-    tr.appendChild(el("td","total", String(r.pts)));
+    tr.appendChild(el("td",null, lg ? (r.last % 1 ? r.last.toFixed(1) : String(r.last)) : "—"));
+    tr.appendChild(el("td","total", (r.pts % 1 ? r.pts.toFixed(1) : String(r.pts))));
     body.appendChild(tr);
   });
 }
@@ -1651,23 +1693,43 @@ function renderComm(){
   w.games.forEach(function(g){
     var r = el("div","cg");
     r.appendChild(el("span",null,fmtKick(g)));
-    var who = el("span","who", (T[g.away]?T[g.away][1]:g.away) + " at " +
-      (T[g.home]?T[g.home][1]:g.home));
-    r.appendChild(who);
+    r.appendChild(el("span","who", (T[g.away]?T[g.away][1]:g.away) + " at " +
+      (T[g.home]?T[g.home][1]:g.home)));
+
     [g.away, g.home].forEach(function(ab){
       var b = el("button",null,ab);
       if(g.winner === ab) b.classList.add("on");
       b.addEventListener("click", function(){
         g.winner = (g.winner === ab) ? "" : ab; mark(); renderComm();
+        renderStandings(); renderWeek();
       });
       r.appendChild(b);
     });
-    var t3 = el("button","tri", g.pts === 3 ? "3 pts" : "1 pt");
-    if(g.pts === 3) t3.classList.add("on");
-    t3.addEventListener("click", function(){
-      g.pts = g.pts === 3 ? 1 : 3; mark(); renderComm();
+
+    /* a tie: nobody called it right, so everyone who picked takes half */
+    var tb = el("button","tie","Tie");
+    if(g.winner === "TIE") tb.classList.add("on");
+    tb.addEventListener("click", function(){
+      g.winner = (g.winner === "TIE") ? "" : "TIE"; mark(); renderComm();
+      renderStandings(); renderWeek();
     });
-    r.appendChild(t3);
+    r.appendChild(tb);
+
+    /* what a correct pick on this game is worth — editable for oddities */
+    var wrap = el("label","ptsedit");
+    wrap.appendChild(el("span","lbl","worth"));
+    var inp = document.createElement("input");
+    inp.type = "number"; inp.min = "0"; inp.step = "0.5";
+    inp.value = String(g.pts);
+    inp.addEventListener("change", function(){
+      var v = parseFloat(this.value);
+      g.pts = (isNaN(v) || v < 0) ? 1 : v;
+      this.value = String(g.pts);
+      mark(); renderStandings(); renderWeek(); renderStrip();
+    });
+    wrap.appendChild(inp);
+    wrap.appendChild(el("span","lbl", g.pts === 1 ? "pt" : "pts"));
+    r.appendChild(wrap);
     host.appendChild(r);
   });
 }
@@ -1946,7 +2008,7 @@ $("#footBuild").textContent = BUILD;
    or this is the Claude copy, where a relative path does not resolve — the
    board falls back to type alone rather than showing a broken image. */
 $("#heroImg").addEventListener("error", function(){
-  this.remove();
+  $("#boardArt").remove();
   $("#board").style.gridTemplateColumns = "1fr";
 });
 renderStrip(); renderWeek(); renderStandings(); renderWall(); show("picks");
