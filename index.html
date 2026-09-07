@@ -161,6 +161,20 @@ h1 .hut::after{content:"";position:absolute;left:0;right:.06em;bottom:.08em;
 .whobar .hint{font-family:var(--mono);font-size:11px;color:var(--muted);
   letter-spacing:.06em}
 .whobar .hint.error{color:var(--loss);font-weight:600}
+/* who is in for the week, read straight from the spreadsheet */
+.roster{display:flex;flex-wrap:wrap;gap:6px;align-items:center;width:100%;
+  margin-top:14px;padding-top:13px;border-top:1px solid var(--line-soft)}
+.roster .rlabel{font-family:var(--mono);font-size:10px;font-weight:600;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--muted);
+  margin-right:5px;white-space:nowrap}
+.chip{font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.03em;
+  padding:4px 9px;border:1.5px solid var(--line);color:var(--muted);
+  white-space:nowrap;cursor:default}
+.chip.in{border-color:var(--win);color:var(--win);
+  background:color-mix(in srgb,var(--win) 14%,transparent)}
+.chip.in::before{content:"✓ "}
+.chip.you{border-width:2.5px;border-color:var(--ink);color:var(--ink)}
+.chip.in.you{border-color:var(--win);color:var(--win)}
 @media (prefers-reduced-motion:no-preference){
   #whoSel.nudge{animation:nudge .4s ease-in-out}
   @keyframes nudge{0%,100%{transform:none}25%{transform:translateX(-5px)}
@@ -687,6 +701,7 @@ details[open] summary::before{content:"▾ "}
   <span class="lbl"><label for="whoSel">You are</label></span>
   <select id="whoSel"></select>
   <span class="hint" id="whoHint">pick your name to make picks or post</span>
+  <div class="roster" id="roster"></div>
 </div>
 
 <section class="wall" id="wall">
@@ -871,7 +886,7 @@ details[open] summary::before{content:"▾ "}
 
 <script>
 /* Shown in the footer so you can tell at a glance which build is live. */
-var BUILD = "v26 · 7 Sep";
+var BUILD = "v27 · 7 Sep";
 
 var T = {
   ARI:["Arizona","Cardinals","#97233F"], ATL:["Atlanta","Falcons","#A71930"],
@@ -1199,6 +1214,36 @@ function renderBar(){
       : "games picked · " + (open.length - done) + " to go";
     cta.textContent = "Review";
   }
+}
+
+/* ---------- who is in this week ----------
+   Straight from the spreadsheet, so it lags a submission by a few minutes and
+   stays empty anywhere the page cannot reach Google. */
+function renderRoster(){
+  var w = cur(), host = $("#roster");
+  if(!host) return;
+  host.textContent = "";
+  if(!w) return;
+  var got = w.picks || {};
+  var inN = S.players.filter(function(p){ return got[p]; }).length;
+
+  host.appendChild(el("span","rlabel",
+    inN + " of " + S.players.length + " in for week " + w.n));
+
+  S.players.forEach(function(p){
+    var theirs = got[p];
+    var c = el("span","chip" + (theirs ? " in" : "") + (p === me ? " you" : ""), p);
+    if(theirs){
+      var n = w.games.filter(function(g){ return theirs[g.id]; }).length;
+      var at = (w.subAt || {})[p], d = at ? new Date(at) : null;
+      c.title = p + " — " + n + " of " + w.games.length + " games" +
+        (d && !isNaN(d) ? ", sent " + d.toLocaleString([], { weekday:"short",
+          hour:"numeric", minute:"2-digit" }) : "");
+    } else {
+      c.title = p + " has not submitted for week " + w.n + " yet";
+    }
+    host.appendChild(c);
+  });
 }
 
 /* ---------- standings ---------- */
@@ -1668,7 +1713,7 @@ async function syncPicks(){
                          " ignored, sent after kickoff" : "")
                : "Spreadsheet reached — no picks submitted yet");
     seedFromServer();
-    renderStandings(); renderWeek(); renderStrip(); renderWall();
+    renderStandings(); renderWeek(); renderStrip(); renderWall(); renderRoster();
   } catch(e){
     renderWall();
     syncNote(IN_ARTIFACT
@@ -1946,7 +1991,7 @@ $("#whoSel").addEventListener("change", function(){
     ? "pick your name to make picks or post"
     : n ? "your submitted picks are filled in below"
         : "picks and posts will go up under your name";
-  renderWeek(); renderStandings(); renderWall();
+  renderWeek(); renderStandings(); renderWall(); renderRoster();
 });
 /* Review is always clickable — a dead button tells you nothing. If the name is
    missing, say so where the name is chosen and take them to it. */
@@ -2037,7 +2082,7 @@ $("#heroImg").addEventListener("error", function(){
   $("#boardArt").remove();
   $("#board").style.gridTemplateColumns = "1fr";
 });
-renderStrip(); renderWeek(); renderStandings(); renderWall(); show("picks");
+renderStrip(); renderWeek(); renderStandings(); renderWall(); renderRoster(); show("picks");
 $("#whoSel").setAttribute("data-empty", me ? "0" : "1");
 if(me) $("#whoHint").textContent = "picks and posts will go up under your name";
 setInterval(function(){ renderStrip(); renderWeek(); }, 60000);
