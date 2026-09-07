@@ -112,15 +112,29 @@ h1 .hut::after{content:"";position:absolute;left:0;right:0;bottom:.1em;
 .wall-compose{display:flex;gap:9px;align-items:flex-start;margin-bottom:16px}
 .wall-compose textarea{flex:1;font-family:var(--body);font-size:16px;min-height:46px;
   resize:vertical;background:var(--surface)}
-.posts{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:1px;
-  background:var(--line);border:1px solid var(--line)}
-.post{background:var(--surface);padding:12px 14px 14px}
-.post .meta{display:flex;align-items:baseline;gap:9px;margin-bottom:5px}
+.posts{background:var(--surface);border:1px solid var(--line);
+  max-height:400px;overflow-y:auto;overscroll-behavior:contain}
+.post{display:flex;gap:13px;padding:14px 16px;
+  border-bottom:1px solid var(--line-soft)}
+.post:last-child{border-bottom:none}
+.post .avatar{width:34px;height:34px;flex:none;border-radius:50%;
+  display:grid;place-items:center;font-family:var(--disp);font-size:17px;
+  font-weight:800;line-height:1;color:#fff}
+.post .bubble{flex:1;min-width:0}
+.post .meta{display:flex;align-items:baseline;gap:10px;margin-bottom:3px}
 .post .from{font-family:var(--disp);font-size:19px;font-weight:700;line-height:1;
   text-transform:uppercase}
 .post .when{font-family:var(--mono);font-size:10px;color:var(--muted);
-  letter-spacing:.06em;margin-left:auto;white-space:nowrap}
-.post p{margin:0;font-size:15.5px;line-height:1.5;overflow-wrap:anywhere}
+  letter-spacing:.06em;margin-left:auto;white-space:nowrap;flex:none}
+.post p{margin:0;font-size:15.5px;line-height:1.5;overflow-wrap:anywhere;
+  white-space:pre-wrap}
+.post.mine{background:var(--surface-2)}
+.post.pending{opacity:.62}
+.post.pending .when{color:var(--flag)}
+.wall-head .refresh{margin-left:auto;font-family:var(--mono);font-size:10px;
+  font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);
+  border-bottom:1px solid var(--line)}
+.wall-head .refresh:hover{color:var(--ink);border-bottom-color:var(--ink)}
 .wall-empty{font-size:15.5px;color:var(--muted);border-left:4px solid var(--line);
   padding:10px 0 10px 14px;max-width:62ch}
 
@@ -537,6 +551,7 @@ details[open] summary::before{content:"▾ "}
   <div class="wall-head">
     <h2>The Wall</h2>
     <span class="n" id="wallCount"></span>
+    <button class="refresh" id="btnWallRefresh">Refresh</button>
   </div>
   <div class="wall-compose">
     <textarea id="wallText" rows="2" maxlength="600" placeholder="Talk your talk. Everyone in the league sees this."></textarea>
@@ -711,7 +726,7 @@ details[open] summary::before{content:"▾ "}
 
 <script>
 /* Shown in the footer so you can tell at a glance which build is live. */
-var BUILD = "v9 · 7 Sep";
+var BUILD = "v10 · 7 Sep";
 
 var T = {
   ARI:["Arizona","Cardinals","#97233F"], ATL:["Atlanta","Falcons","#A71930"],
@@ -1224,41 +1239,65 @@ function applyRows(rows){
   return n;
 }
 
-/* ---------- the wall ---------- */
-var wallAll = false;
+/* ---------- the wall ----------
+   A post takes minutes to come back from Google (published sheets are cached),
+   so a new one is held locally and shown straight away, marked as sending. It
+   survives a reload, and drops out of the local list the moment the same post
+   arrives from the spreadsheet for real. */
+var PENDING = [];
+try { PENDING = JSON.parse(localStorage.getItem("tsh.pending") || "[]"); } catch(e){}
+function savePending(){
+  try { localStorage.setItem("tsh.pending", JSON.stringify(PENDING)); } catch(e){}
+}
+function livePosts(){
+  var confirmed = {};
+  WALL.forEach(function(p){ confirmed[p.who + " " + p.text] = 1; });
+  PENDING = PENDING.filter(function(p){
+    return !confirmed[p.who + " " + p.text];
+  });
+  savePending();
+  return PENDING.concat(WALL);
+}
+
+var AVATAR = ["#2C563B","#8A4C0C","#3B4E76","#6B2F4A","#4A5A2C","#7A3B2A"];
+function avatarColor(name){
+  var h = 0;
+  for(var i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  return AVATAR[h % AVATAR.length];
+}
+
 function renderWall(){
-  var host = $("#wallList"), n = WALL.length;
+  var host = $("#wallList"), posts = livePosts(), n = posts.length;
   $("#wallCount").textContent = n ? n + (n === 1 ? " post" : " posts") : "";
   host.textContent = "";
   if(!n){
-    var e = el("p","wall-empty", S.picksCsv && !IN_ARTIFACT
+    host.appendChild(el("p","wall-empty", S.picksCsv && !IN_ARTIFACT
       ? "Nothing on the wall yet. Be the first to talk some trash."
-      : "The wall reads posts from the league spreadsheet, which this page cannot reach from inside Claude. On the published site it fills in by itself.");
-    host.appendChild(e);
+      : "The wall reads posts from the league spreadsheet, which this page cannot reach from inside Claude. On the published site it fills in by itself."));
     return;
   }
-  var shown = wallAll ? WALL : WALL.slice(0, 6);
-  var grid = el("div","posts");
-  shown.forEach(function(p){
-    var c = el("div","post"), meta = el("div","meta");
+  var list = el("div","posts");
+  posts.forEach(function(p){
+    var c = el("div","post" + (p.pending ? " pending" : "") +
+      (p.who === me ? " mine" : ""));
+    var av = el("div","avatar", p.who.charAt(0).toUpperCase());
+    av.style.background = avatarColor(p.who);
+    c.appendChild(av);
+
+    var bub = el("div","bubble"), meta = el("div","meta");
     meta.appendChild(el("span","from", p.who));
     var d = p.at ? new Date(p.at) : null;
-    meta.appendChild(el("span","when", d && !isNaN(d)
-      ? d.toLocaleString([], { month:"numeric", day:"numeric", hour:"numeric",
-          minute:"2-digit" })
-      : ""));
-    c.appendChild(meta);
-    c.appendChild(el("p", null, p.text));
-    grid.appendChild(c);
+    meta.appendChild(el("span","when", p.pending ? "sending…"
+      : (d && !isNaN(d)
+        ? d.toLocaleString([], { month:"numeric", day:"numeric",
+            hour:"numeric", minute:"2-digit" })
+        : "")));
+    bub.appendChild(meta);
+    bub.appendChild(el("p", null, p.text));
+    c.appendChild(bub);
+    list.appendChild(c);
   });
-  host.appendChild(grid);
-  if(WALL.length > 6){
-    var more = el("button","btn ghost sm", wallAll ? "Show fewer"
-      : "Show all " + WALL.length);
-    more.style.marginTop = "12px";
-    more.addEventListener("click", function(){ wallAll = !wallAll; renderWall(); });
-    host.appendChild(more);
-  }
+  host.appendChild(list);
 }
 
 $("#btnPost").addEventListener("click", async function(){
@@ -1269,8 +1308,12 @@ $("#btnPost").addEventListener("click", async function(){
   try {
     await sendToForm("WALL", txt);
     $("#wallText").value = "";
-    $("#whoHint").textContent = "posted — it shows on the wall within a few minutes";
-    setTimeout(syncPicks, 10000);
+    /* show it immediately rather than waiting on Google's cache */
+    PENDING.unshift({ who:me, at:Date.now(), text:txt, pending:true });
+    savePending(); renderWall();
+    $("#whoHint").textContent = "posted";
+    setTimeout(syncPicks, 12000);
+    setTimeout(syncPicks, 45000);
   } catch(e){
     var f = S.form;
     if(f.action){
@@ -1450,6 +1493,11 @@ $("#btnPrefill").addEventListener("click", function(){
     $("#formState").textContent = found >= 3 ? "Connected" : "Partly connected";
     mark();
   } catch(e){ notice("Not a link", "Paste the whole pre-filled URL, starting with https://"); }
+});
+$("#btnWallRefresh").addEventListener("click", async function(){
+  var b = this; b.textContent = "Checking…";
+  await syncPicks();
+  b.textContent = "Refresh";
 });
 $("#btnCsv").addEventListener("click", function(){
   S.picksCsv = $("#csvIn").value.trim();
