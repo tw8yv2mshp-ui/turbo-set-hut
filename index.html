@@ -66,23 +66,24 @@ a{color:var(--flag-ink)}
 .marquee{margin:0 0 0;padding:0;border:none}
 /* The illustration is sized by the text beside it, not the other way round —
    the whole board has to clear the fold so the name picker is visible on load. */
-.board{display:grid;grid-template-columns:1fr auto;gap:26px;
-  align-items:stretch;background:var(--board);color:var(--board-ink);
+/* text takes the left ~80%, the art gets a fixed 20% column and sets its own
+   height from that width so the drawing is never stretched or cropped */
+.board{display:grid;grid-template-columns:minmax(0,1fr) 20%;gap:24px;
+  align-items:center;background:var(--board);color:var(--board-ink);
   border:1px solid var(--board-line);border-top:none;padding:22px 26px}
 .board-txt{min-width:0}
 .marquee-top{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;
   padding-bottom:14px;border-bottom:1px solid var(--board-line)}
 .marquee-top .eyebrow{color:var(--board-muted)}
-/* The name is a snap count, so set it as one: two held beats stepping to the
-   right, then the snap — bigger, gold, and the only thing shouting. */
-h1{font-size:clamp(40px,6.6vw,72px);font-weight:800;line-height:.98;
+/* The name is a snap count, read left to right on one line: two quiet held
+   beats, then the snap — twice the size, gold, the only word shouting. */
+h1{font-size:clamp(34px,5.4vw,64px);font-weight:800;line-height:1;
   letter-spacing:-.005em;padding-top:12px;color:var(--board-ink);
-  display:flex;flex-direction:column;align-items:flex-start}
-h1 .beat{font-size:.46em;font-weight:700;letter-spacing:.015em;
+  display:flex;flex-wrap:wrap;align-items:baseline;gap:0 .26em}
+h1 .beat{font-size:.5em;font-weight:700;letter-spacing:.015em;
   color:var(--board-muted)}
-h1 .beat.drawl{margin-left:.62em;color:var(--board-ink)}
-h1 .hut{margin-left:1.3em;color:var(--board-gold);position:relative;
-  letter-spacing:-.02em}
+h1 .beat.drawl{color:var(--board-ink)}
+h1 .hut{color:var(--board-gold);position:relative;letter-spacing:-.02em}
 h1 .hut::after{content:"";position:absolute;left:0;right:.06em;bottom:.08em;
   height:.06em;background:var(--board-gold)}
 .season{font-family:var(--mono);font-size:11px;font-weight:600;
@@ -94,8 +95,8 @@ h1 .hut::after{content:"";position:absolute;left:0;right:.06em;bottom:.08em;
    grid row and then height:100% just measures itself — the image keeps winning.
    The wrapper has no intrinsic height, so the text column sets the row; the
    wrapper stretches to it and aspect-ratio derives the width from that height. */
-.board-art{position:relative;align-self:stretch;justify-self:end;
-  height:100%;width:auto;aspect-ratio:928 / 1145;max-width:min(300px,32vw);
+.board-art{position:relative;width:100%;height:auto;aspect-ratio:928 / 1145;
+  justify-self:end;align-self:center;
   border:2px solid var(--board-gold);overflow:hidden}
 .board-art img{position:absolute;inset:0;display:block;width:100%;height:100%;
   object-fit:contain}
@@ -848,7 +849,7 @@ details[open] summary::before{content:"▾ "}
 
 <script>
 /* Shown in the footer so you can tell at a glance which build is live. */
-var BUILD = "v22 · 7 Sep";
+var BUILD = "v23 · 7 Sep";
 
 var T = {
   ARI:["Arizona","Cardinals","#97233F"], ATL:["Atlanta","Falcons","#A71930"],
