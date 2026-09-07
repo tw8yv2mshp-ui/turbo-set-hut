@@ -71,9 +71,8 @@ a{color:var(--flag-ink)}
 .marquee-top{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;
   padding-bottom:14px;border-bottom:1px solid var(--board-line)}
 .marquee-top .eyebrow{color:var(--board-muted)}
-h1{font-size:clamp(46px,8.5vw,92px);font-weight:800;line-height:.84;
-  letter-spacing:-.015em;text-transform:uppercase;padding-top:16px;
-  color:var(--board-ink)}
+h1{font-size:clamp(46px,8.5vw,92px);font-weight:800;line-height:1.02;
+  letter-spacing:-.005em;padding-top:16px;color:var(--board-ink)}
 h1 .hut{color:var(--board-gold);position:relative}
 h1 .hut::after{content:"";position:absolute;left:0;right:0;bottom:.1em;
   height:.055em;background:var(--board-gold)}
@@ -113,7 +112,7 @@ h1 .hut::after{content:"";position:absolute;left:0;right:0;bottom:.1em;
 .confirm .tick{font-family:var(--disp);font-size:22px;font-weight:800;line-height:1.1;
   color:var(--win);flex:none}
 .confirm b{display:block;font-family:var(--disp);font-size:20px;font-weight:700;
-  text-transform:uppercase;letter-spacing:.01em;margin-bottom:2px}
+  letter-spacing:.005em;margin-bottom:2px}
 .confirm p{margin:0;font-size:15.5px;color:var(--muted);line-height:1.5}
 .confirm.stale{border-color:var(--flag);
   background:color-mix(in srgb,var(--flag) 11%,transparent)}
@@ -179,15 +178,20 @@ section[id^="view-"]{scroll-margin-top:56px}
 section[hidden]{display:none}
 .sec-head{display:flex;justify-content:space-between;align-items:baseline;
   gap:16px;flex-wrap:wrap;margin-bottom:6px}
-h2{font-size:34px;font-weight:700;text-transform:uppercase;letter-spacing:-.01em}
+h2{font-size:36px;font-weight:700;letter-spacing:-.005em;line-height:1.05}
 .lede{color:var(--muted);max-width:62ch;margin:0 0 26px}
 
 /* ---------- window groups ---------- */
-.window{margin-bottom:30px}
-.window-head{display:flex;align-items:center;gap:12px;margin-bottom:10px}
-.window-head .name{font-family:var(--mono);font-size:11px;font-weight:600;
-  letter-spacing:.16em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
-.window-head .rule{flex:1;height:1px;background:var(--line)}
+.window{margin-bottom:34px}
+.window-head{display:flex;align-items:center;gap:14px;margin-bottom:12px}
+.window-head .name{font-family:var(--disp);font-size:27px;font-weight:700;
+  line-height:1;letter-spacing:.005em;color:var(--ink);white-space:nowrap}
+.window-head .rule{flex:1;height:2px;background:var(--turf)}
+/* the commissioner panel keeps the small ruled labels */
+#view-comm .window-head .name{font-family:var(--mono);font-size:11px;
+  font-weight:600;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--muted)}
+#view-comm .window-head .rule{height:1px;background:var(--line)}
 
 /* ---------- game strip ---------- */
 .games{display:flex;flex-direction:column;gap:8px}
@@ -309,28 +313,28 @@ tr.leader .meter i{background:var(--flag)}
 .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(232px,1fr));
   gap:1px;background:var(--line);border:1px solid var(--line);margin-bottom:30px}
 .card{background:var(--surface);padding:18px 18px 20px}
-.card h3{font-size:22px;font-weight:700;text-transform:uppercase;margin-bottom:7px}
+.card h3{font-size:23px;font-weight:700;margin-bottom:7px;line-height:1.1}
 .card p{margin:0;font-size:15.5px;color:var(--muted);line-height:1.5}
 .card .big{font-family:var(--disp);font-size:44px;font-weight:800;line-height:.9;
   color:var(--flag);display:block;margin-bottom:2px}
 .prose{max-width:66ch}
 .prose p{margin:0 0 15px}
-.prose h3{font-size:24px;text-transform:uppercase;margin:28px 0 8px}
+.prose h3{font-size:26px;margin:28px 0 8px;line-height:1.1}
 details{border-top:1px solid var(--line);padding:16px 0;margin-top:8px}
-summary{font-family:var(--disp);font-size:23px;font-weight:700;
-  text-transform:uppercase;cursor:pointer;list-style:none}
+summary{font-family:var(--disp);font-size:24px;font-weight:700;
+  cursor:pointer;list-style:none}
 summary::-webkit-details-marker{display:none}
 summary::before{content:"▸ ";color:var(--flag)}
 details[open] summary::before{content:"▾ "}
 .letter{font-style:italic;color:var(--muted);max-width:64ch;margin-top:16px}
 .letter p{margin:0 0 14px}
-.sig{font-family:var(--disp);font-style:normal;font-size:26px;
-  text-transform:uppercase;color:var(--ink)}
+.sig{font-family:var(--disp);font-style:normal;font-size:28px;
+  color:var(--ink)}
 
 /* ---------- notices / comm ---------- */
 .notice{border-left:4px solid var(--flag);background:var(--surface);
   padding:14px 16px;margin-bottom:24px;font-size:15.5px}
-.notice b{font-family:var(--disp);font-size:19px;text-transform:uppercase;
+.notice b{font-family:var(--disp);font-size:20px;
   display:block;margin-bottom:3px;letter-spacing:.01em}
 .field{margin-bottom:16px}
 .field label{display:block;font-family:var(--mono);font-size:10px;font-weight:600;
@@ -759,7 +763,7 @@ details[open] summary::before{content:"▾ "}
 
 <script>
 /* Shown in the footer so you can tell at a glance which build is live. */
-var BUILD = "v13 · 7 Sep";
+var BUILD = "v14 · 7 Sep";
 
 var T = {
   ARI:["Arizona","Cardinals","#97233F"], ATL:["Atlanta","Falcons","#A71930"],
