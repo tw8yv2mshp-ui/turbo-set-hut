@@ -112,22 +112,21 @@ h1 .hut::after{content:"";position:absolute;left:0;right:0;bottom:.1em;
 .wall-compose{display:flex;gap:9px;align-items:flex-start;margin-bottom:16px}
 .wall-compose textarea{flex:1;font-family:var(--body);font-size:16px;min-height:46px;
   resize:vertical;background:var(--surface)}
-.posts{background:var(--surface);border:1px solid var(--line);
-  max-height:400px;overflow-y:auto;overscroll-behavior:contain}
-.post{display:flex;gap:13px;padding:14px 16px;
-  border-bottom:1px solid var(--line-soft)}
+/* one post per line; the box shows three and scrolls past that */
+.posts{--post-h:41px;background:var(--surface);border:1px solid var(--line);
+  max-height:calc(var(--post-h) * 3);overflow-y:auto;overscroll-behavior:contain}
+.post{display:flex;gap:9px;align-items:baseline;padding:9px 13px;
+  line-height:1.35;border-bottom:1px solid var(--line-soft)}
 .post:last-child{border-bottom:none}
-.post .avatar{width:34px;height:34px;flex:none;border-radius:50%;
-  display:grid;place-items:center;font-family:var(--disp);font-size:17px;
-  font-weight:800;line-height:1;color:#fff}
-.post .bubble{flex:1;min-width:0}
-.post .meta{display:flex;align-items:baseline;gap:10px;margin-bottom:3px}
-.post .from{font-family:var(--disp);font-size:19px;font-weight:700;line-height:1;
-  text-transform:uppercase}
+.post .avatar{width:19px;height:19px;flex:none;border-radius:50%;
+  display:inline-grid;place-items:center;align-self:center;color:#fff;
+  font-family:var(--disp);font-size:11px;font-weight:800;line-height:1}
+.post .line{flex:1;min-width:0;font-size:15px}
+.post .from{font-family:var(--disp);font-size:17px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.01em;margin-right:7px}
+.post .msg{overflow-wrap:anywhere}
 .post .when{font-family:var(--mono);font-size:10px;color:var(--muted);
-  letter-spacing:.06em;margin-left:auto;white-space:nowrap;flex:none}
-.post p{margin:0;font-size:15.5px;line-height:1.5;overflow-wrap:anywhere;
-  white-space:pre-wrap}
+  letter-spacing:.06em;white-space:nowrap;flex:none;align-self:center}
 .post.mine{background:var(--surface-2)}
 .post.pending{opacity:.62}
 .post.pending .when{color:var(--flag)}
@@ -139,8 +138,10 @@ h1 .hut::after{content:"";position:absolute;left:0;right:0;bottom:.1em;
   padding:10px 0 10px 14px;max-width:62ch}
 
 /* ---------- tabs ---------- */
+/* the tab bar is the page's nav: first thing on the page, sticks while scrolling */
 .tabs{display:flex;gap:0;flex-wrap:wrap;border-bottom:1px solid var(--line);
-  margin-bottom:30px;position:sticky;top:0;background:var(--ground);z-index:20}
+  margin-bottom:0;position:sticky;top:0;background:var(--ground);z-index:20}
+section[id^="view-"]{scroll-margin-top:56px}
 .tab{font-family:var(--disp);font-size:20px;font-weight:700;text-transform:uppercase;
   letter-spacing:.02em;padding:13px 18px 11px;color:var(--muted);
   border-bottom:3px solid transparent;margin-bottom:-1px}
@@ -523,6 +524,13 @@ details[open] summary::before{content:"▾ "}
 
 <div class="wrap">
 
+<nav class="tabs" role="tablist">
+  <button class="tab" role="tab" data-view="picks" aria-selected="true">This Week</button>
+  <button class="tab" role="tab" data-view="standings" aria-selected="false">Standings</button>
+  <button class="tab" role="tab" data-view="rules" aria-selected="false">Rules</button>
+  <button class="tab" role="tab" data-view="comm" aria-selected="false">Commissioner</button>
+</nav>
+
 <header class="marquee">
   <div class="marquee-top">
     <span class="eyebrow">Indacochea &middot; Sobel &middot; Sebso</span>
@@ -562,13 +570,6 @@ details[open] summary::before{content:"▾ "}
     <a id="wallFormLink" target="_blank" rel="noopener">Open the form instead</a>.</p>
   <div id="wallList"></div>
 </section>
-
-<nav class="tabs" role="tablist">
-  <button class="tab" role="tab" data-view="picks" aria-selected="true">This Week</button>
-  <button class="tab" role="tab" data-view="standings" aria-selected="false">Standings</button>
-  <button class="tab" role="tab" data-view="rules" aria-selected="false">Rules</button>
-  <button class="tab" role="tab" data-view="comm" aria-selected="false">Commissioner</button>
-</nav>
 
 <!-- ============ PICKS ============ -->
 <section id="view-picks">
@@ -726,7 +727,7 @@ details[open] summary::before{content:"▾ "}
 
 <script>
 /* Shown in the footer so you can tell at a glance which build is live. */
-var BUILD = "v10 · 7 Sep";
+var BUILD = "v12 · 7 Sep";
 
 var T = {
   ARI:["Arizona","Cardinals","#97233F"], ATL:["Atlanta","Falcons","#A71930"],
@@ -1280,21 +1281,22 @@ function renderWall(){
   posts.forEach(function(p){
     var c = el("div","post" + (p.pending ? " pending" : "") +
       (p.who === me ? " mine" : ""));
-    var av = el("div","avatar", p.who.charAt(0).toUpperCase());
+    var av = el("span","avatar", p.who.charAt(0).toUpperCase());
     av.style.background = avatarColor(p.who);
     c.appendChild(av);
 
-    var bub = el("div","bubble"), meta = el("div","meta");
-    meta.appendChild(el("span","from", p.who));
+    /* name and message share one line; long messages wrap under the name */
+    var line = el("div","line");
+    line.appendChild(el("span","from", p.who));
+    line.appendChild(el("span","msg", p.text.replace(/\s+/g, " ")));
+    c.appendChild(line);
+
     var d = p.at ? new Date(p.at) : null;
-    meta.appendChild(el("span","when", p.pending ? "sending…"
+    c.appendChild(el("span","when", p.pending ? "sending…"
       : (d && !isNaN(d)
         ? d.toLocaleString([], { month:"numeric", day:"numeric",
             hour:"numeric", minute:"2-digit" })
         : "")));
-    bub.appendChild(meta);
-    bub.appendChild(el("p", null, p.text));
-    c.appendChild(bub);
     list.appendChild(c);
   });
   host.appendChild(list);
@@ -1362,7 +1364,13 @@ function show(v){
   renderBar();
 }
 document.querySelectorAll(".tab").forEach(function(t){
-  t.addEventListener("click", function(){ show(t.dataset.view); });
+  t.addEventListener("click", function(){
+    show(t.dataset.view);
+    /* the nav sits above the marquee and the wall, so bring the chosen
+       section up to it rather than leaving the reader to scroll for it */
+    var sec = document.getElementById("view-" + t.dataset.view);
+    if(sec) sec.scrollIntoView({ behavior:"smooth", block:"start" });
+  });
 });
 
 /* ---------- commissioner ---------- */
