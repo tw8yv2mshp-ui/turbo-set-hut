@@ -257,6 +257,25 @@ h2{font-size:36px;font-weight:700;letter-spacing:-.005em;line-height:1.05}
   .gnote{text-align:left}
 }
 
+/* ---------- pick slip drawer ---------- */
+.drawer-back{position:fixed;inset:0;background:rgba(11,20,29,.55);z-index:40}
+.drawer{position:fixed;left:0;right:0;bottom:0;z-index:50;background:var(--surface);
+  border-top:4px solid var(--board-gold);max-height:84vh;
+  box-shadow:0 -18px 44px rgba(11,20,29,.3)}
+.drawer-in{max-width:1040px;margin:0 auto;padding:18px 20px 22px;
+  display:flex;flex-direction:column;gap:14px;max-height:84vh}
+.drawer-head{display:flex;align-items:baseline;gap:14px}
+.drawer-head h2{font-size:28px}
+.drawer-x{margin-left:auto;font-family:var(--mono);font-size:17px;line-height:1;
+  color:var(--muted);padding:5px 9px;border:1px solid var(--line);flex:none}
+.drawer-x:hover{color:var(--ink);border-color:var(--ink)}
+.drawer .slip{max-height:none;flex:1;min-height:0;overflow:auto}
+.drawer-foot{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+@media (prefers-reduced-motion:no-preference){
+  .drawer{animation:slipUp .2s ease-out}
+  @keyframes slipUp{from{transform:translateY(16px)}to{transform:none}}
+}
+
 /* ---------- submit bar ---------- */
 .bar{position:fixed;left:0;right:0;bottom:0;background:var(--surface);
   border-top:3px solid var(--ink);z-index:30}
@@ -267,6 +286,10 @@ h2{font-size:36px;font-weight:700;letter-spacing:-.005em;line-height:1.05}
 .bar .sub{font-family:var(--mono);font-size:11px;color:var(--muted);
   letter-spacing:.06em;margin-top:3px}
 .bar .spacer{flex:1}
+.bar.sent{border-top-color:var(--win)}
+.bar.sent .count{color:var(--win)}
+.bar.changed{border-top-color:var(--flag)}
+.bar.changed .count{color:var(--flag-ink)}
 .btn{display:inline-block;text-decoration:none;font-family:var(--disp);font-size:19px;font-weight:700;text-transform:uppercase;
   letter-spacing:.03em;padding:11px 22px 9px;border:2px solid var(--ink);
   background:var(--ink);color:var(--ground);white-space:nowrap}
@@ -615,17 +638,6 @@ details[open] summary::before{content:"▾ "}
   <p class="lede" id="weekLede"></p>
   <div class="confirm" id="subBanner" hidden></div>
   <div id="gameList"></div>
-  <div id="slipBox" hidden>
-    <div class="window-head"><span class="name">Your pick slip</span><span class="rule"></span></div>
-    <div class="slip" id="slipText"></div>
-    <div class="row" style="margin-top:12px">
-      <button class="btn go" id="btnSend">Send my picks</button>
-      <a class="btn ghost sm" id="btnForm" target="_blank" rel="noopener" hidden>Open the form instead</a>
-      <button class="btn ghost sm" id="btnCopy">Copy pick slip</button>
-      <button class="btn ghost sm" id="btnEdit">Keep editing</button>
-    </div>
-    <p class="lede" style="margin-top:10px;font-size:15px" id="slipHelp"></p>
-  </div>
 </section>
 
 <!-- ============ STANDINGS ============ -->
@@ -749,6 +761,24 @@ details[open] summary::before{content:"▾ "}
 </div>
 </div>
 
+<div class="drawer-back" id="drawerBack" hidden></div>
+<aside class="drawer" id="slipBox" role="dialog" aria-modal="true"
+       aria-labelledby="slipTitle" hidden>
+  <div class="drawer-in">
+    <div class="drawer-head">
+      <h2 id="slipTitle">Your slip</h2>
+      <button class="drawer-x" id="btnEdit" aria-label="Close and keep editing">&#10005;</button>
+    </div>
+    <div class="slip" id="slipText"></div>
+    <div class="drawer-foot">
+      <button class="btn go" id="btnSend">Send my picks</button>
+      <a class="btn ghost sm" id="btnForm" target="_blank" rel="noopener" hidden>Open the form instead</a>
+      <button class="btn ghost sm" id="btnCopy">Copy</button>
+    </div>
+    <p class="lede" style="margin:0;font-size:14.5px" id="slipHelp"></p>
+  </div>
+</aside>
+
 <div class="bar" id="bar" hidden>
   <div class="bar-in">
     <div>
@@ -757,13 +787,13 @@ details[open] summary::before{content:"▾ "}
     </div>
     <div class="spacer"></div>
     <button class="btn ghost sm" id="btnClear">Clear</button>
-    <button class="btn go" id="btnReview" disabled>Review &amp; submit</button>
+    <button class="btn go" id="btnReview" disabled>Review</button>
   </div>
 </div>
 
 <script>
 /* Shown in the footer so you can tell at a glance which build is live. */
-var BUILD = "v14 · 7 Sep";
+var BUILD = "v15 · 7 Sep";
 
 var T = {
   ARI:["Arizona","Cardinals","#97233F"], ATL:["Atlanta","Falcons","#A71930"],
@@ -1049,20 +1079,39 @@ function renderBar(){
   var open = w.games.filter(function(g){ return !locked(g); });
   if(!open.length){ hideBar(); return; }
   var done = open.filter(function(g){ return mine[g.id]; }).length;
-  /* nothing picked yet: an empty bar with a dead button is just clutter */
-  if(!done){ hideBar(); return; }
+  var st = pickState();
+  /* nothing picked and nothing sent: an empty bar with a dead button is clutter */
+  if(!done && !(st && st.everSent)){ hideBar(); return; }
   bar.hidden = false;
   document.body.classList.add("has-bar");
+
   var pts = open.filter(function(g){ return mine[g.id]; })
-    .reduce(function(a,g){ return a+g.pts; },0);
-  $("#barCount").textContent = done + " of " + open.length;
-  $("#barSub").textContent = me
-    ? (done === open.length ? pts + " points riding on it, " + me
-       : "games picked · " + (open.length-done) + " to go")
-    : "pick your name above first";
-  var ok = me && done > 0;
-  $("#btnReview").disabled = !ok;
-  $("#btnReview").textContent = submitted[w.n] ? "Review & resubmit" : "Review & submit";
+    .reduce(function(a,g){ return a + g.pts; }, 0);
+  var count = $("#barCount"), sub = $("#barSub"), cta = $("#btnReview");
+  bar.classList.remove("sent","changed");
+
+  if(!me){
+    count.textContent = done + " of " + open.length;
+    sub.textContent = "pick your name above first";
+    cta.disabled = true; cta.textContent = "Review";
+  } else if(st && st.everSent && st.changes.length){
+    bar.classList.add("changed");
+    count.textContent = st.changes.length +
+      (st.changes.length === 1 ? " change" : " changes");
+    sub.textContent = "since the slip Ricardo has";
+    cta.disabled = false; cta.textContent = "Review changes";
+  } else if(st && st.everSent){
+    bar.classList.add("sent");
+    count.textContent = "Submitted ✓";
+    sub.textContent = done + " of " + open.length + " games in · " + pts + " points riding on it";
+    cta.disabled = false; cta.textContent = "Review picks";
+  } else {
+    count.textContent = done + " of " + open.length;
+    sub.textContent = done === open.length
+      ? pts + " points riding on it, " + me
+      : "games picked · " + (open.length - done) + " to go";
+    cta.disabled = done === 0; cta.textContent = "Review";
+  }
 }
 
 /* ---------- standings ---------- */
@@ -1107,6 +1156,49 @@ function code(w, mine){
     .map(function(g){ return g.id.split("-")[1] + "=" + mine[g.id]; });
   return "W" + w.n + "|" + parts.join("|");
 }
+/* Turn a slip's CODE back into a picks map, so the page can compare what is on
+   screen against what was actually sent. */
+function decodeCode(str, wn){
+  var m = String(str || "").match(/W(\d+)\|(.+)/);
+  if(!m) return null;
+  var out = {};
+  m[2].split("|").forEach(function(p){
+    var kv = p.split("=");
+    if(T[kv[1]]) out["w" + wn + "-" + kv[0]] = kv[1];
+  });
+  return out;
+}
+
+/* Where this player stands for the week: what Ricardo has, what is on screen,
+   and exactly what differs. The baseline is the last slip sent from THIS
+   device when there is one — Google's copy can be minutes behind — otherwise
+   the spreadsheet, which is what another device would see. */
+function pickState(){
+  var w = cur();
+  if(!w || !me) return null;
+  var mine = myPicks[w.n] || {};
+  var onFile = (w.picks || {})[me] || null;
+  var sent = submitted[w.n];
+  var sentMap = (sent && typeof sent === "object")
+    ? decodeCode(sent.code, w.n) : null;
+  var base = sentMap || onFile;
+
+  var changes = [];
+  if(base){
+    w.games.forEach(function(g){
+      if(locked(g)) return;
+      var from = base[g.id] || null, to = mine[g.id] || null;
+      if(to && to !== from) changes.push({ g:g, from:from, to:to });
+    });
+  }
+  return {
+    w:w, mine:mine, onFile:onFile, base:base, changes:changes,
+    everSent: !!(onFile || sentMap),
+    picked: w.games.filter(function(g){ return !locked(g) && mine[g.id]; }).length,
+    open:   w.games.filter(function(g){ return !locked(g); }).length
+  };
+}
+
 function slip(){
   var w = cur(), mine = myPicks[w.n] || {};
   var lines = ["TURBO SET HUT — WEEK " + w.n, me, ""];
@@ -1122,6 +1214,23 @@ function slip(){
   });
   lines.push("");
   lines.push("  " + pts + " points riding on it.");
+
+  /* if this is a resend, spell out what moved — for them and for Ricardo */
+  var st = pickState();
+  if(st && st.changes.length){
+    lines.push("");
+    lines.push("CHANGED SINCE MY LAST SLIP");
+    st.changes.forEach(function(c){
+      var label = (T[c.g.away] ? T[c.g.away][1] : c.g.away) + " at " +
+        (T[c.g.home] ? T[c.g.home][1] : c.g.home);
+      var pad = label.length < 34 ? new Array(35 - label.length).join(" ") : "  ";
+      var to = T[c.to] ? T[c.to][1].toUpperCase() : c.to;
+      lines.push("  " + label + pad +
+        (c.from ? (T[c.from] ? T[c.from][1].toUpperCase() : c.from) + " -> " + to
+                : "now " + to));
+    });
+  }
+
   lines.push("");
   lines.push("CODE " + code(w, mine));
   return lines.join("\n");
@@ -1159,17 +1268,28 @@ async function sendToForm(week, text){
   await fetch(url, { method:"POST", mode:"no-cors", body:fd });
 }
 
+function closeSlip(){
+  $("#slipBox").hidden = true;
+  $("#drawerBack").hidden = true;
+}
 function showSlip(){
-  var w = cur();
+  var w = cur(), st = pickState();
+  $("#slipTitle").textContent = st && st.everSent && st.changes.length
+    ? "Your changes"
+    : "Your Week " + (w ? w.n : "") + " slip";
+  $("#btnSend").textContent = st && st.everSent && st.changes.length
+    ? "Send changes" : "Send my picks";
   $("#slipText").textContent = slip();
+  $("#drawerBack").hidden = false;
   $("#slipBox").hidden = false;
+  $("#btnSend").focus();
   var url = formURL();
   if(url) $("#btnForm").href = url;
   $("#btnSend").hidden = !url;
   $("#slipHelp").textContent = url
     ? "Your picks go straight to Ricardo's spreadsheet — no form to fill in. You can change anything that has not kicked off and send again; the last one before kickoff counts."
     : "The league's form is not connected, so copy your slip and send it to Ricardo the usual way.";
-  $("#slipBox").scrollIntoView({ behavior:"smooth", block:"nearest" });
+  /* drawer is fixed to the viewport; nothing to scroll to */
 }
 
 /* ---------- submission confirmation ----------
@@ -1682,12 +1802,12 @@ $("#whoSel").addEventListener("change", function(){
   renderWeek(); renderStandings(); renderWall();
 });
 $("#btnReview").addEventListener("click", function(){ showSlip(); });
-$("#btnEdit").addEventListener("click", function(){ $("#slipBox").hidden = true; });
+$("#btnEdit").addEventListener("click", closeSlip);
 $("#btnClear").addEventListener("click", function(){
   var w = cur(); if(!w) return;
   var mine = myPicks[w.n] || {};
   w.games.forEach(function(g){ if(!locked(g)) delete mine[g.id]; });
-  remember(); $("#slipBox").hidden = true; renderWeek();
+  remember(); closeSlip(); renderWeek();
 });
 $("#btnCopy").addEventListener("click", async function(){
   var b = this;
@@ -1710,7 +1830,7 @@ function recordSubmit(hide){
     n: w.games.filter(function(g){ return mine[g.id]; }).length
   };
   remember();
-  if(hide) $("#slipBox").hidden = true;
+  if(hide) closeSlip();
   renderWeek();
 }
 $("#btnForm").addEventListener("click", function(){ recordSubmit(true); });
@@ -1728,6 +1848,11 @@ $("#btnSend").addEventListener("click", async function(){
     $("#btnForm").hidden = false;
   }
   b.disabled = false; b.textContent = "Send my picks";
+});
+
+$("#drawerBack").addEventListener("click", closeSlip);
+document.addEventListener("keydown", function(e){
+  if(e.key === "Escape" && !$("#slipBox").hidden) closeSlip();
 });
 
 window.addEventListener("beforeunload", function(e){
