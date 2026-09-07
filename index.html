@@ -78,13 +78,13 @@ a{color:var(--flag-ink)}
 .marquee-top{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;
   padding-bottom:14px;border-bottom:1px solid var(--board-line)}
 .marquee-top .eyebrow{color:var(--board-muted)}
-/* The name is a snap count, read left to right on one line: two quiet held
-   beats, then the snap — twice the size, gold, the only word shouting. */
-h1{font-size:clamp(34px,5.4vw,64px);font-weight:800;line-height:1;
+/* The name is a snap count read left to right, every word the same height —
+   the cadence carries in the punctuation and the colour, not the sizing. */
+h1{font-size:clamp(32px,5vw,58px);font-weight:800;line-height:1;
   letter-spacing:-.005em;padding-top:12px;color:var(--board-ink);
-  display:flex;flex-wrap:wrap;align-items:baseline;gap:0 .26em}
-h1 .beat{font-size:.5em;font-weight:700;letter-spacing:.015em;
-  color:var(--board-muted)}
+  display:flex;flex-wrap:wrap;align-items:baseline;gap:0 .24em}
+h1 .beat{font-size:1em;font-weight:700;letter-spacing:.005em;
+  color:var(--board-ink)}
 h1 .beat.drawl{color:var(--board-ink)}
 h1 .hut{color:var(--board-gold);position:relative;letter-spacing:-.02em}
 h1 .hut::after{content:"";position:absolute;left:0;right:.06em;bottom:.08em;
@@ -133,17 +133,18 @@ h1 .hut::after{content:"";position:absolute;left:0;right:.06em;bottom:.08em;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 /* ---------- submission confirmation ---------- */
-.confirm{display:flex;gap:13px;align-items:flex-start;margin-bottom:26px;
-  border:1px solid var(--win);background:color-mix(in srgb,var(--win) 9%,transparent);
-  padding:14px 16px}
-.confirm .tick{font-family:var(--disp);font-size:22px;font-weight:800;line-height:1.1;
-  color:var(--win);flex:none}
+.confirm{display:flex;gap:14px;align-items:flex-start;margin-bottom:26px;
+  border:1.5px solid var(--win);border-left:7px solid var(--win);
+  background:color-mix(in srgb,var(--win) 20%,var(--surface));
+  padding:15px 18px}
+.confirm .tick{font-family:var(--disp);font-size:26px;font-weight:800;
+  line-height:1;color:var(--win);flex:none}
 .confirm b{display:block;font-family:var(--disp);font-size:20px;font-weight:700;
   letter-spacing:.005em;margin-bottom:2px}
 .confirm p{margin:0;font-size:15.5px;color:var(--muted);line-height:1.5}
-.confirm.stale{border-color:var(--flag);
-  background:color-mix(in srgb,var(--flag) 11%,transparent)}
-.confirm.stale .tick{color:var(--flag)}
+.confirm.stale{border-color:var(--flag);border-left-color:var(--flag);
+  background:color-mix(in srgb,var(--flag) 22%,var(--surface))}
+.confirm.stale .tick{color:var(--flag-ink)}
 
 /* ---------- who you are ---------- */
 .whobar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:18px 0;
@@ -781,7 +782,7 @@ details[open] summary::before{content:"▾ "}
     <div class="commgames" id="commGames"></div>
 
     <div class="row" style="margin-top:22px">
-      <button class="btn go" id="btnSave">Save and publish</button>
+      <button class="btn go" id="btnSave">Save</button>
       <span class="eyebrow" id="pubState"></span>
     </div>
     <p class="lede" style="font-size:15px;margin-top:8px" id="pubHelp">Saving publishes a new version of this page for everyone holding the link. Only people with edit access can save.</p>
@@ -856,7 +857,7 @@ details[open] summary::before{content:"▾ "}
 
 <script>
 /* Shown in the footer so you can tell at a glance which build is live. */
-var BUILD = "v24 · 7 Sep";
+var BUILD = "v25 · 7 Sep";
 
 var T = {
   ARI:["Arizona","Cardinals","#97233F"], ATL:["Atlanta","Falcons","#A71930"],
@@ -1413,12 +1414,12 @@ function renderConfirm(){
       box.appendChild(el("p", null, "Ricardo still has your earlier slip" +
         (when ? " from " + when : "") + ". Send again and he takes the newer one — the last submission before kickoff counts."));
     } else {
-      box.appendChild(el("b", null, "Ricardo has your Week " + w.n + " picks"));
+      box.appendChild(el("b", null, "Your Week " + w.n + " picks have been sent"));
       box.appendChild(el("p", null, nOn + " of " + w.games.length + " games" +
-        (when ? ", received " + when : "") + ". They are filled in below. " +
+        (when ? ", sent " + when : "") + ". " +
         (openLeft
-          ? "Change anything that has not kicked off and send again."
-          : "Every game has kicked off — nothing left to change.")));
+          ? "You can still change any of the " + openLeft + " games that have not kicked off — make your changes below and send again."
+          : "Every game has kicked off, so nothing can change now.")));
     }
     b.appendChild(box);
     return;
@@ -1432,9 +1433,12 @@ function renderConfirm(){
   b.textContent = "";
   b.appendChild(el("span","tick", "✓"));
   var box2 = el("div");
-  box2.appendChild(el("b", null, "Week " + w.n + " sent"));
-  box2.appendChild(el("p", null, "Sent " + when2 + " with " + s.n + " of " +
-    w.games.length + " games. It can take a few minutes to show up as received."));
+  var stillOpen = w.games.filter(function(g){ return !locked(g); }).length;
+  box2.appendChild(el("b", null, "Your Week " + w.n + " picks have been sent"));
+  box2.appendChild(el("p", null, s.n + " of " + w.games.length + " games, sent " +
+    when2 + ". " + (stillOpen
+      ? "You can still change any of the " + stillOpen + " games that have not kicked off — make your changes below and send again."
+      : "Every game has kicked off, so nothing can change now.")));
   b.appendChild(box2);
 }
 
@@ -1824,7 +1828,7 @@ $("#btnPrefill").addEventListener("click", function(){
     if(found < 3){
       notice("Read " + found + " of 3 questions", "Get a fresh pre-filled link where the three answers are exactly NAME, WEEK and PICKS.");
     } else {
-      notice("Form connected", "Players will now land on the form with everything filled in. Save and publish to make it live.");
+      notice("Form connected", "Players will now land on the form with everything filled in. Save to make it live.");
     }
     $("#formState").textContent = found >= 3 ? "Connected" : "Partly connected";
     mark();
@@ -2005,7 +2009,7 @@ window.addEventListener("beforeunload", function(e){
 
 /* ---------- go ---------- */
 if(!IN_ARTIFACT){
-  $("#btnSave").textContent = "Save the updated site";
+  $("#btnSave").textContent = "Save";
   $("#pubHelp").textContent = "Saving builds a fresh index.html and downloads it. " +
     "Drop that file on your Vercel project to put the new standings live — " +
     "the web address never changes.";
