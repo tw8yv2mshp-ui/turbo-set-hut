@@ -1,0 +1,1505 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  :root{color-scheme:light dark}
+  body{margin:0}
+  img{max-width:100%}
+  [hidden]{display:none!important}
+</style>
+<title>Turbo Set Hut</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@500;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&display=swap">
+<style>
+:root{
+  --ground:#E6E3DA; --surface:#F7F6F1; --surface-2:#EFEDE4;
+  --ink:#161915; --muted:#6C7167; --line:#C7C4B6; --line-soft:#DAD7CB;
+  --flag:#C26D18; --flag-ink:#8A4C0C; --turf:#2C563B;
+  --win:#2C6B47; --loss:#9E3B2A;
+  --disp:"Big Shoulders Display","Haettenschweiler","Arial Narrow",sans-serif;
+  --body:"Newsreader",Georgia,serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#151812; --surface:#1E2219; --surface-2:#262B20;
+    --ink:#EDEBE1; --muted:#9BA18F; --line:#39402F; --line-soft:#2C3225;
+    --flag:#E9A24E; --flag-ink:#F0BC7E; --turf:#7CAF8B;
+    --win:#6FBF8E; --loss:#E08A76;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#151812; --surface:#1E2219; --surface-2:#262B20;
+  --ink:#EDEBE1; --muted:#9BA18F; --line:#39402F; --line-soft:#2C3225;
+  --flag:#E9A24E; --flag-ink:#F0BC7E; --turf:#7CAF8B;
+  --win:#6FBF8E; --loss:#E08A76;
+}
+*{box-sizing:border-box}
+body{background:var(--ground);color:var(--ink);font-family:var(--body);
+  font-size:17px;line-height:1.55;-webkit-font-smoothing:antialiased;
+  padding:0 20px 140px}
+.wrap{max-width:1040px;margin:0 auto}
+h1,h2,h3,.disp{font-family:var(--disp);text-wrap:balance;margin:0}
+.mono{font-family:var(--mono)}
+.eyebrow{font-family:var(--mono);font-size:11px;font-weight:600;
+  letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+a{color:var(--flag-ink)}
+:focus-visible{outline:2.5px solid var(--flag);outline-offset:2px;border-radius:2px}
+
+/* ---------- marquee ---------- */
+.marquee{border-bottom:3px solid var(--ink);padding:26px 0 0;margin-bottom:0}
+.marquee-top{display:flex;justify-content:space-between;gap:16px;
+  flex-wrap:wrap;padding-bottom:14px;border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:flex-end;gap:20px;flex-wrap:wrap;padding:18px 0 20px}
+h1{font-size:clamp(58px,13vw,132px);font-weight:800;line-height:.82;
+  letter-spacing:-.015em;text-transform:uppercase}
+h1 .hut{color:var(--flag);position:relative}
+h1 .hut::after{content:"";position:absolute;left:0;right:0;bottom:.1em;
+  height:.055em;background:var(--flag)}
+.tagline{font-family:var(--body);font-size:17px;color:var(--muted);
+  max-width:34ch;margin:0 0 6px;font-style:italic}
+
+/* ---------- status strip ---------- */
+.strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+  border-top:1px solid var(--line);border-bottom:3px solid var(--ink)}
+.strip div{padding:12px 16px 13px;border-right:1px solid var(--line-soft)}
+.strip div:last-child{border-right:none}
+.strip .k{display:block;font-family:var(--mono);font-size:10px;font-weight:600;
+  letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:3px}
+.strip .v{font-family:var(--disp);font-size:26px;font-weight:700;line-height:1;
+  text-transform:uppercase;font-variant-numeric:tabular-nums}
+.strip .v.urgent{color:var(--flag)}
+.strip .sub{display:block;font-family:var(--mono);font-size:10px;color:var(--muted);
+  letter-spacing:.04em;margin-top:5px;white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis}
+
+/* ---------- submission confirmation ---------- */
+.confirm{display:flex;gap:13px;align-items:flex-start;margin-bottom:26px;
+  border:1px solid var(--win);background:color-mix(in srgb,var(--win) 9%,transparent);
+  padding:14px 16px}
+.confirm .tick{font-family:var(--disp);font-size:22px;font-weight:800;line-height:1.1;
+  color:var(--win);flex:none}
+.confirm b{display:block;font-family:var(--disp);font-size:20px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.01em;margin-bottom:2px}
+.confirm p{margin:0;font-size:15.5px;color:var(--muted);line-height:1.5}
+.confirm.stale{border-color:var(--flag);
+  background:color-mix(in srgb,var(--flag) 11%,transparent)}
+.confirm.stale .tick{color:var(--flag)}
+
+/* ---------- who you are ---------- */
+.whobar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:18px 0;
+  border-bottom:1px solid var(--line)}
+.whobar .lbl{font-family:var(--disp);font-size:27px;font-weight:700;line-height:1;
+  text-transform:uppercase;letter-spacing:.01em}
+#whoSel{font-family:var(--disp);font-size:25px;font-weight:700;line-height:1;
+  text-transform:uppercase;letter-spacing:.01em;padding:9px 12px;width:auto;
+  min-width:240px;max-width:none;border:2.5px solid var(--ink);background:var(--surface)}
+#whoSel:invalid,#whoSel[data-empty="1"]{border-color:var(--flag);color:var(--flag-ink)}
+.whobar .hint{font-family:var(--mono);font-size:11px;color:var(--muted);
+  letter-spacing:.06em}
+
+/* ---------- the wall ---------- */
+.wall{padding:20px 0 22px;border-bottom:3px solid var(--ink)}
+.wall-head{display:flex;align-items:baseline;gap:12px;margin-bottom:12px}
+.wall-head h2{font-size:27px}
+.wall-head .n{font-family:var(--mono);font-size:11px;color:var(--muted);
+  letter-spacing:.14em;text-transform:uppercase}
+.wall-compose{display:flex;gap:9px;align-items:flex-start;margin-bottom:16px}
+.wall-compose textarea{flex:1;font-family:var(--body);font-size:16px;min-height:46px;
+  resize:vertical;background:var(--surface)}
+.posts{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:1px;
+  background:var(--line);border:1px solid var(--line)}
+.post{background:var(--surface);padding:12px 14px 14px}
+.post .meta{display:flex;align-items:baseline;gap:9px;margin-bottom:5px}
+.post .from{font-family:var(--disp);font-size:19px;font-weight:700;line-height:1;
+  text-transform:uppercase}
+.post .when{font-family:var(--mono);font-size:10px;color:var(--muted);
+  letter-spacing:.06em;margin-left:auto;white-space:nowrap}
+.post p{margin:0;font-size:15.5px;line-height:1.5;overflow-wrap:anywhere}
+.wall-empty{font-size:15.5px;color:var(--muted);border-left:4px solid var(--line);
+  padding:10px 0 10px 14px;max-width:62ch}
+
+/* ---------- tabs ---------- */
+.tabs{display:flex;gap:0;flex-wrap:wrap;border-bottom:1px solid var(--line);
+  margin-bottom:30px;position:sticky;top:0;background:var(--ground);z-index:20}
+.tab{font-family:var(--disp);font-size:20px;font-weight:700;text-transform:uppercase;
+  letter-spacing:.02em;padding:13px 18px 11px;color:var(--muted);
+  border-bottom:3px solid transparent;margin-bottom:-1px}
+.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--flag)}
+.tab:hover{color:var(--ink)}
+
+section[hidden]{display:none}
+.sec-head{display:flex;justify-content:space-between;align-items:baseline;
+  gap:16px;flex-wrap:wrap;margin-bottom:6px}
+h2{font-size:34px;font-weight:700;text-transform:uppercase;letter-spacing:-.01em}
+.lede{color:var(--muted);max-width:62ch;margin:0 0 26px}
+
+/* ---------- window groups ---------- */
+.window{margin-bottom:30px}
+.window-head{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.window-head .name{font-family:var(--mono);font-size:11px;font-weight:600;
+  letter-spacing:.16em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+.window-head .rule{flex:1;height:1px;background:var(--line)}
+
+/* ---------- game strip ---------- */
+.games{display:flex;flex-direction:column;gap:8px}
+.game{display:grid;grid-template-columns:5px 1fr;background:var(--surface);
+  border:1px solid var(--line-soft)}
+.game.tri{border-color:var(--line)}
+.game .rail{background:var(--line-soft)}
+.game.tri .rail{background:var(--flag)}
+.game.locked{opacity:.72}
+.gbody{padding:11px 14px 12px;display:grid;
+  grid-template-columns:1fr auto;gap:10px 18px;align-items:center}
+.gmeta{grid-column:1/-1;display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:.04em}
+.pts{font-weight:600;color:var(--muted)}
+.game.tri .pts{color:var(--flag-ink)}
+.lockchip{font-weight:600;text-transform:uppercase;letter-spacing:.1em}
+.matchup{display:flex;align-items:stretch;gap:8px;min-width:0}
+.team{flex:1;display:flex;align-items:center;gap:9px;min-width:0;
+  padding:9px 11px;border:1.5px solid var(--line-soft);background:var(--ground);
+  text-align:left;transition:border-color .12s,background .12s}
+.team:hover:not(:disabled){border-color:var(--ink)}
+.team:disabled{cursor:default}
+.dot{width:11px;height:11px;flex:none;border-radius:2px}
+.tname{font-family:var(--disp);font-size:21px;font-weight:700;line-height:1;
+  text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tcity{font-family:var(--mono);font-size:10px;color:var(--muted);
+  letter-spacing:.1em;text-transform:uppercase;margin-left:auto;flex:none}
+.team.picked{border-color:var(--ink);background:var(--surface-2)}
+.team.picked .tname{color:var(--ink)}
+.team.picked .dot{box-shadow:0 0 0 3px var(--surface),0 0 0 4.5px currentColor}
+.team.winner{border-color:var(--win);background:color-mix(in srgb,var(--win) 12%,transparent)}
+.team.correct{border-color:var(--win);border-width:2.5px}
+.team.wrong{border-color:var(--loss);border-width:2.5px}
+.at{display:flex;align-items:center;font-family:var(--mono);font-size:10px;
+  color:var(--muted);letter-spacing:.1em;text-transform:uppercase}
+.gnote{font-family:var(--mono);font-size:11px;color:var(--muted);
+  text-align:right;white-space:nowrap}
+.gnote b{color:var(--ink);font-weight:600}
+@media(max-width:620px){
+  .matchup{flex-direction:column;gap:6px}
+  .at{display:none}
+  .gbody{grid-template-columns:1fr}
+  .gnote{text-align:left}
+}
+
+/* ---------- submit bar ---------- */
+.bar{position:fixed;left:0;right:0;bottom:0;background:var(--surface);
+  border-top:3px solid var(--ink);z-index:30}
+.bar-in{max-width:1040px;margin:0 auto;padding:12px 20px;display:flex;
+  align-items:center;gap:16px;flex-wrap:wrap}
+.bar .count{font-family:var(--disp);font-size:27px;font-weight:700;
+  text-transform:uppercase;line-height:1;font-variant-numeric:tabular-nums}
+.bar .sub{font-family:var(--mono);font-size:11px;color:var(--muted);
+  letter-spacing:.06em;margin-top:3px}
+.bar .spacer{flex:1}
+.btn{display:inline-block;text-decoration:none;font-family:var(--disp);font-size:19px;font-weight:700;text-transform:uppercase;
+  letter-spacing:.03em;padding:11px 22px 9px;border:2px solid var(--ink);
+  background:var(--ink);color:var(--ground);white-space:nowrap}
+.btn:hover{background:transparent;color:var(--ink)}
+.btn.go{background:var(--flag);border-color:var(--flag);color:#fff}
+.btn.go:hover{background:transparent;color:var(--flag-ink)}
+.btn:disabled{opacity:.4;cursor:not-allowed;background:transparent;color:var(--muted);
+  border-color:var(--line)}
+.btn.ghost{background:transparent;color:var(--ink);border-color:var(--line)}
+.btn.ghost:hover{border-color:var(--ink);background:transparent}
+.btn.sm{font-size:15px;padding:7px 13px 6px;border-width:1.5px}
+select,input[type=text],input[type=url],textarea{font-family:var(--mono);
+  font-size:13px;background:var(--ground);color:var(--ink);
+  border:1.5px solid var(--line);padding:8px 10px;width:100%}
+select{max-width:220px}
+
+/* ---------- standings ---------- */
+.tablewrap{overflow-x:auto;border:1px solid var(--line);background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:520px}
+th{font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--muted);text-align:right;
+  padding:11px 14px;border-bottom:2px solid var(--ink);white-space:nowrap}
+th:first-child,th:nth-child(2){text-align:left}
+td{padding:11px 14px;border-bottom:1px solid var(--line-soft);text-align:right;
+  font-family:var(--mono);font-size:14px;font-variant-numeric:tabular-nums}
+td:first-child,td:nth-child(2){text-align:left}
+tr:last-child td{border-bottom:none}
+.rank{color:var(--muted);font-size:12px;width:1%}
+.pname{font-family:var(--disp);font-size:23px;font-weight:700;
+  text-transform:uppercase;line-height:1}
+tr.leader .pname{color:var(--flag)}
+tr.me{background:var(--surface-2)}
+tr.me .pname::after{content:"you";font-family:var(--mono);font-size:9px;
+  font-weight:600;letter-spacing:.14em;color:var(--muted);margin-left:8px;
+  vertical-align:2px}
+td.total{font-family:var(--disp);font-size:25px;font-weight:700;line-height:1}
+.barcell{width:34%;min-width:110px}
+.meter{height:9px;background:var(--surface-2);border:1px solid var(--line-soft)}
+.meter i{display:block;height:100%;background:var(--turf)}
+tr.leader .meter i{background:var(--flag)}
+.cellar td{color:var(--muted)}
+
+/* ---------- cards / rules ---------- */
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(232px,1fr));
+  gap:1px;background:var(--line);border:1px solid var(--line);margin-bottom:30px}
+.card{background:var(--surface);padding:18px 18px 20px}
+.card h3{font-size:22px;font-weight:700;text-transform:uppercase;margin-bottom:7px}
+.card p{margin:0;font-size:15.5px;color:var(--muted);line-height:1.5}
+.card .big{font-family:var(--disp);font-size:44px;font-weight:800;line-height:.9;
+  color:var(--flag);display:block;margin-bottom:2px}
+.prose{max-width:66ch}
+.prose p{margin:0 0 15px}
+.prose h3{font-size:24px;text-transform:uppercase;margin:28px 0 8px}
+details{border-top:1px solid var(--line);padding:16px 0;margin-top:8px}
+summary{font-family:var(--disp);font-size:23px;font-weight:700;
+  text-transform:uppercase;cursor:pointer;list-style:none}
+summary::-webkit-details-marker{display:none}
+summary::before{content:"▸ ";color:var(--flag)}
+details[open] summary::before{content:"▾ "}
+.letter{font-style:italic;color:var(--muted);max-width:64ch;margin-top:16px}
+.letter p{margin:0 0 14px}
+.sig{font-family:var(--disp);font-style:normal;font-size:26px;
+  text-transform:uppercase;color:var(--ink)}
+
+/* ---------- notices / comm ---------- */
+.notice{border-left:4px solid var(--flag);background:var(--surface);
+  padding:14px 16px;margin-bottom:24px;font-size:15.5px}
+.notice b{font-family:var(--disp);font-size:19px;text-transform:uppercase;
+  display:block;margin-bottom:3px;letter-spacing:.01em}
+.field{margin-bottom:16px}
+.field label{display:block;font-family:var(--mono);font-size:10px;font-weight:600;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+.slip{font-family:var(--mono);font-size:12.5px;line-height:1.7;white-space:pre-wrap;
+  background:var(--surface-2);border:1px solid var(--line);padding:14px;
+  max-height:340px;overflow:auto}
+.steps{counter-reset:s;padding:0;margin:0 0 22px;list-style:none}
+.steps li{counter-increment:s;position:relative;padding-left:38px;margin-bottom:14px;
+  font-size:15.5px;color:var(--muted)}
+.steps li::before{content:counter(s);position:absolute;left:0;top:1px;
+  font-family:var(--mono);font-size:11px;font-weight:600;color:var(--flag);
+  border:1.5px solid var(--flag);width:24px;height:24px;display:grid;place-items:center}
+.steps li b{color:var(--ink);font-weight:600}
+.commgames{display:flex;flex-direction:column;gap:6px;margin-bottom:20px}
+.cg{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--surface);
+  border:1px solid var(--line-soft);padding:8px 11px;font-family:var(--mono);font-size:12px}
+.cg .who{flex:1;min-width:150px}
+.cg button{border:1.5px solid var(--line);padding:4px 9px;font-family:var(--mono);
+  font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase}
+.cg button.on{border-color:var(--ink);background:var(--ink);color:var(--ground)}
+.cg button.tri.on{border-color:var(--flag);background:var(--flag);color:#fff}
+.foot{border-top:1px solid var(--line);margin-top:44px;padding:18px 0 0;
+  font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:.04em;
+  display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+
+<script type="application/json" id="league-state">
+{
+  "season": "2026",
+  "commissioner": "Ricardo",
+  "currentWeek": 1,
+  "commishCode": "hut",
+  "picksCsv": "https://docs.google.com/spreadsheets/d/e/2PACX-1vQl05La2U_2FbZhsoVx3Rylzk4cLZtmSztaiX3wwEFPrI5ltLSP6clWBsLJNnheVfVz6e-ng_Q7PSPo/pub?gid=1089371907&single=true&output=csv",
+  "form": {
+    "action": "https://docs.google.com/forms/d/e/1FAIpQLScv0R4gtD_oeCsSR0mMdG94WyPfUS7QZkzxgx2-GaQWFhinQA/viewform",
+    "eName": "entry.713146803",
+    "eWeek": "entry.336024101",
+    "ePicks": "entry.2127336841"
+  },
+  "players": ["Ricardo","Ernesto","David","Joaquin","Amaia","German","Marisol","Rocio","Jodi","Nathan","Sandra"],
+  "weeks": [
+    {
+      "n": 1,
+      "games": [
+        { "id":"w1-1",  "away":"NE",  "home":"SEA", "kick":"2026-09-09T20:20:00-04:00", "pts":1, "winner":"" },
+        { "id":"w1-2",  "away":"SF",  "home":"LAR", "kick":"2026-09-10T20:35:00-04:00", "pts":1, "winner":"" },
+        { "id":"w1-3",  "away":"CHI", "home":"CAR", "kick":"2026-09-13T13:00:00-04:00", "pts":1, "winner":"" },
+        { "id":"w1-4",  "away":"TB",  "home":"CIN", "kick":"2026-09-13T13:00:00-04:00", "pts":1, "winner":"" },
+        { "id":"w1-5",  "away":"NO",  "home":"DET", "kick":"2026-09-13T13:00:00-04:00", "pts":1, "winner":"" },
+        { "id":"w1-6",  "away":"BUF", "home":"HOU", "kick":"2026-09-13T13:00:00-04:00", "pts":1, "winner":"" },
+        { "id":"w1-7",  "away":"BAL", "home":"IND", "kick":"2026-09-13T13:00:00-04:00", "pts":1, "winner":"" },
+        { "id":"w1-8",  "away":"CLE", "home":"JAX", "kick":"2026-09-13T13:00:00-04:00", "pts":1, "winner":"" },
+        { "id":"w1-9",  "away":"ATL", "home":"PIT", "kick":"2026-09-13T13:00:00-04:00", "pts":1, "winner":"" },
+        { "id":"w1-10", "away":"NYJ", "home":"TEN", "kick":"2026-09-13T13:00:00-04:00", "pts":1, "winner":"" },
+        { "id":"w1-11", "away":"ARI", "home":"LAC", "kick":"2026-09-13T16:25:00-04:00", "pts":1, "winner":"" },
+        { "id":"w1-12", "away":"MIA", "home":"LV",  "kick":"2026-09-13T16:25:00-04:00", "pts":1, "winner":"" },
+        { "id":"w1-13", "away":"GB",  "home":"MIN", "kick":"2026-09-13T16:25:00-04:00", "pts":1, "winner":"" },
+        { "id":"w1-14", "away":"WAS", "home":"PHI", "kick":"2026-09-13T16:25:00-04:00", "pts":1, "winner":"" },
+        { "id":"w1-15", "away":"DAL", "home":"NYG", "kick":"2026-09-13T20:20:00-04:00", "pts":3, "winner":"" },
+        { "id":"w1-16", "away":"DEN", "home":"KC",  "kick":"2026-09-14T20:15:00-04:00", "pts":3, "winner":"" }
+      ],
+      "picks": {}
+    },
+    {
+      "n": 2,
+      "games": [
+        { "id":"w2-1", "away":"DET", "home":"BUF", "kick":"2026-09-17T20:15:00-04:00", "pts":1, "winner":"" },
+        { "id":"w2-2", "away":"CAR", "home":"ATL", "kick":"2026-09-20T13:00:00-04:00", "pts":1, "winner":"" },
+        { "id":"w2-3", "away":"NO", "home":"BAL", "kick":"2026-09-20T13:00:00-04:00", "pts":1, "winner":"" },
+        { "id":"w2-4", "away":"MIN", "home":"CHI", "kick":"2026-09-20T13:00:00-04:00", "pts":1, "winner":"" },
+        { "id":"w2-5", "away":"CIN", "home":"HOU", "kick":"2026-09-20T13:00:00-04:00", "pts":1, "winner":"" },
+        { "id":"w2-6", "away":"PIT", "home":"NE", "kick":"2026-09-20T13:00:00-04:00", "pts":1, "winner":"" },
+        { "id":"w2-7", "away":"GB", "home":"NYJ", "kick":"2026-09-20T13:00:00-04:00", "pts":1, "winner":"" },
+        { "id":"w2-8", "away":"CLE", "home":"TB", "kick":"2026-09-20T13:00:00-04:00", "pts":1, "winner":"" },
+        { "id":"w2-9", "away":"PHI", "home":"TEN", "kick":"2026-09-20T13:00:00-04:00", "pts":1, "winner":"" },
+        { "id":"w2-10", "away":"JAX", "home":"DEN", "kick":"2026-09-20T16:05:00-04:00", "pts":1, "winner":"" },
+        { "id":"w2-11", "away":"LV", "home":"LAC", "kick":"2026-09-20T16:05:00-04:00", "pts":1, "winner":"" },
+        { "id":"w2-12", "away":"SEA", "home":"ARI", "kick":"2026-09-20T16:25:00-04:00", "pts":1, "winner":"" },
+        { "id":"w2-13", "away":"WAS", "home":"DAL", "kick":"2026-09-20T16:25:00-04:00", "pts":1, "winner":"" },
+        { "id":"w2-14", "away":"MIA", "home":"SF", "kick":"2026-09-20T16:25:00-04:00", "pts":1, "winner":"" },
+        { "id":"w2-15", "away":"IND", "home":"KC", "kick":"2026-09-20T20:20:00-04:00", "pts":3, "winner":"" },
+        { "id":"w2-16", "away":"NYG", "home":"LAR", "kick":"2026-09-21T20:15:00-04:00", "pts":3, "winner":"" }
+      ],
+      "picks": {}
+    },
+    {
+      "n": 3,
+      "games": [
+        { "id":"w3-1", "away":"ATL", "home":"GB", "kick":"2026-09-24T20:15:00-04:00", "pts":1, "winner":"" },
+        { "id":"w3-2", "away":"LAC", "home":"BUF", "kick":"2026-09-27T13:00:00-04:00", "pts":1, "winner":"" },
+        { "id":"w3-3", "away":"CAR", "home":"CLE", "kick":"2026-09-27T13:00:00-04:00", "pts":1, "winner":"" },
+        { "id":"w3-4", "away":"NYJ", "home":"DET", "kick":"2026-09-27T13:00:00-04:00", "pts":1, "winner":"" },
+        { "id":"w3-5", "away":"HOU", "home":"IND", "kick":"2026-09-27T13:00:00-04:00", "pts":1, "winner":"" },
+        { "id":"w3-6", "away":"NE", "home":"JAX", "kick":"2026-09-27T13:00:00-04:00", "pts":1, "winner":"" },
+        { "id":"w3-7", "away":"KC", "home":"MIA", "kick":"2026-09-27T13:00:00-04:00", "pts":1, "winner":"" },
+        { "id":"w3-8", "away":"TEN", "home":"NYG", "kick":"2026-09-27T13:00:00-04:00", "pts":1, "winner":"" },
+        { "id":"w3-9", "away":"CIN", "home":"PIT", "kick":"2026-09-27T13:00:00-04:00", "pts":1, "winner":"" },
+        { "id":"w3-10", "away":"SEA", "home":"WAS", "kick":"2026-09-27T13:00:00-04:00", "pts":1, "winner":"" },
+        { "id":"w3-11", "away":"ARI", "home":"SF", "kick":"2026-09-27T16:05:00-04:00", "pts":1, "winner":"" },
+        { "id":"w3-12", "away":"MIN", "home":"TB", "kick":"2026-09-27T16:05:00-04:00", "pts":1, "winner":"" },
+        { "id":"w3-13", "away":"BAL", "home":"DAL", "kick":"2026-09-27T16:25:00-04:00", "pts":1, "winner":"" },
+        { "id":"w3-14", "away":"LV", "home":"NO", "kick":"2026-09-27T16:25:00-04:00", "pts":1, "winner":"" },
+        { "id":"w3-15", "away":"LAR", "home":"DEN", "kick":"2026-09-27T20:20:00-04:00", "pts":3, "winner":"" },
+        { "id":"w3-16", "away":"PHI", "home":"CHI", "kick":"2026-09-28T20:15:00-04:00", "pts":3, "winner":"" }
+      ],
+      "picks": {}
+    },
+    {
+      "n": 4,
+      "games": [
+        { "id":"w4-1", "away":"PIT", "home":"CLE", "kick":"2026-10-01T20:15:00-04:00", "pts":1, "winner":"" },
+        { "id":"w4-2", "away":"IND", "home":"WAS", "kick":"2026-10-04T09:30:00-04:00", "pts":1, "winner":"" },
+        { "id":"w4-3", "away":"TEN", "home":"BAL", "kick":"2026-10-04T13:00:00-04:00", "pts":1, "winner":"" },
+        { "id":"w4-4", "away":"NE", "home":"BUF", "kick":"2026-10-04T13:00:00-04:00", "pts":1, "winner":"" },
+        { "id":"w4-5", "away":"NYJ", "home":"CHI", "kick":"2026-10-04T13:00:00-04:00", "pts":1, "winner":"" },
+        { "id":"w4-6", "away":"JAX", "home":"CIN", "kick":"2026-10-04T13:00:00-04:00", "pts":1, "winner":"" },
+        { "id":"w4-7", "away":"DAL", "home":"HOU", "kick":"2026-10-04T13:00:00-04:00", "pts":1, "winner":"" },
+        { "id":"w4-8", "away":"ARI", "home":"NYG", "kick":"2026-10-04T13:00:00-04:00", "pts":1, "winner":"" },
+        { "id":"w4-9", "away":"LAR", "home":"PHI", "kick":"2026-10-04T13:00:00-04:00", "pts":1, "winner":"" },
+        { "id":"w4-10", "away":"GB", "home":"TB", "kick":"2026-10-04T13:00:00-04:00", "pts":1, "winner":"" },
+        { "id":"w4-11", "away":"MIA", "home":"MIN", "kick":"2026-10-04T16:05:00-04:00", "pts":1, "winner":"" },
+        { "id":"w4-12", "away":"KC", "home":"LV", "kick":"2026-10-04T16:25:00-04:00", "pts":1, "winner":"" },
+        { "id":"w4-13", "away":"LAC", "home":"SEA", "kick":"2026-10-04T16:25:00-04:00", "pts":1, "winner":"" },
+        { "id":"w4-14", "away":"DEN", "home":"SF", "kick":"2026-10-04T16:25:00-04:00", "pts":1, "winner":"" },
+        { "id":"w4-15", "away":"DET", "home":"CAR", "kick":"2026-10-04T20:20:00-04:00", "pts":3, "winner":"" },
+        { "id":"w4-16", "away":"ATL", "home":"NO", "kick":"2026-10-05T20:15:00-04:00", "pts":3, "winner":"" }
+      ],
+      "picks": {}
+    },
+    {
+      "n": 5,
+      "games": [
+        { "id":"w5-1", "away":"TB", "home":"DAL", "kick":"2026-10-08T20:15:00-04:00", "pts":1, "winner":"" },
+        { "id":"w5-2", "away":"PHI", "home":"JAX", "kick":"2026-10-11T09:30:00-04:00", "pts":1, "winner":"" },
+        { "id":"w5-3", "away":"CIN", "home":"MIA", "kick":"2026-10-11T13:00:00-04:00", "pts":1, "winner":"" },
+        { "id":"w5-4", "away":"LV", "home":"NE", "kick":"2026-10-11T13:00:00-04:00", "pts":1, "winner":"" },
+        { "id":"w5-5", "away":"MIN", "home":"NO", "kick":"2026-10-11T13:00:00-04:00", "pts":1, "winner":"" },
+        { "id":"w5-6", "away":"CLE", "home":"NYJ", "kick":"2026-10-11T13:00:00-04:00", "pts":1, "winner":"" },
+        { "id":"w5-7", "away":"IND", "home":"PIT", "kick":"2026-10-11T13:00:00-04:00", "pts":1, "winner":"" },
+        { "id":"w5-8", "away":"HOU", "home":"TEN", "kick":"2026-10-11T13:00:00-04:00", "pts":1, "winner":"" },
+        { "id":"w5-9", "away":"NYG", "home":"WAS", "kick":"2026-10-11T13:00:00-04:00", "pts":1, "winner":"" },
+        { "id":"w5-10", "away":"DEN", "home":"LAC", "kick":"2026-10-11T16:05:00-04:00", "pts":1, "winner":"" },
+        { "id":"w5-11", "away":"DET", "home":"ARI", "kick":"2026-10-11T16:25:00-04:00", "pts":1, "winner":"" },
+        { "id":"w5-12", "away":"CHI", "home":"GB", "kick":"2026-10-11T16:25:00-04:00", "pts":1, "winner":"" },
+        { "id":"w5-13", "away":"SF", "home":"SEA", "kick":"2026-10-11T16:25:00-04:00", "pts":1, "winner":"" },
+        { "id":"w5-14", "away":"BAL", "home":"ATL", "kick":"2026-10-11T20:20:00-04:00", "pts":3, "winner":"" },
+        { "id":"w5-15", "away":"BUF", "home":"LAR", "kick":"2026-10-12T20:15:00-04:00", "pts":3, "winner":"" }
+      ],
+      "picks": {}
+    },
+    {
+      "n": 6,
+      "games": [
+        { "id":"w6-1", "away":"SEA", "home":"DEN", "kick":"2026-10-15T20:15:00-04:00", "pts":1, "winner":"" },
+        { "id":"w6-2", "away":"HOU", "home":"JAX", "kick":"2026-10-18T09:30:00-04:00", "pts":1, "winner":"" },
+        { "id":"w6-3", "away":"CHI", "home":"ATL", "kick":"2026-10-18T13:00:00-04:00", "pts":1, "winner":"" },
+        { "id":"w6-4", "away":"BAL", "home":"CLE", "kick":"2026-10-18T13:00:00-04:00", "pts":1, "winner":"" },
+        { "id":"w6-5", "away":"TEN", "home":"IND", "kick":"2026-10-18T13:00:00-04:00", "pts":1, "winner":"" },
+        { "id":"w6-6", "away":"NYJ", "home":"NE", "kick":"2026-10-18T13:00:00-04:00", "pts":1, "winner":"" },
+        { "id":"w6-7", "away":"NO", "home":"NYG", "kick":"2026-10-18T13:00:00-04:00", "pts":1, "winner":"" },
+        { "id":"w6-8", "away":"CAR", "home":"PHI", "kick":"2026-10-18T13:00:00-04:00", "pts":1, "winner":"" },
+        { "id":"w6-9", "away":"PIT", "home":"TB", "kick":"2026-10-18T13:00:00-04:00", "pts":1, "winner":"" },
+        { "id":"w6-10", "away":"ARI", "home":"LAR", "kick":"2026-10-18T16:05:00-04:00", "pts":1, "winner":"" },
+        { "id":"w6-11", "away":"LAC", "home":"KC", "kick":"2026-10-18T16:25:00-04:00", "pts":1, "winner":"" },
+        { "id":"w6-12", "away":"BUF", "home":"LV", "kick":"2026-10-18T16:25:00-04:00", "pts":1, "winner":"" },
+        { "id":"w6-13", "away":"DAL", "home":"GB", "kick":"2026-10-18T20:20:00-04:00", "pts":3, "winner":"" },
+        { "id":"w6-14", "away":"WAS", "home":"SF", "kick":"2026-10-19T20:15:00-04:00", "pts":3, "winner":"" }
+      ],
+      "picks": {}
+    },
+    {
+      "n": 7,
+      "games": [
+        { "id":"w7-1", "away":"NE", "home":"CHI", "kick":"2026-10-22T20:15:00-04:00", "pts":1, "winner":"" },
+        { "id":"w7-2", "away":"PIT", "home":"NO", "kick":"2026-10-25T09:30:00-04:00", "pts":1, "winner":"" },
+        { "id":"w7-3", "away":"SF", "home":"ATL", "kick":"2026-10-25T13:00:00-04:00", "pts":1, "winner":"" },
+        { "id":"w7-4", "away":"CIN", "home":"BAL", "kick":"2026-10-25T13:00:00-04:00", "pts":1, "winner":"" },
+        { "id":"w7-5", "away":"TB", "home":"CAR", "kick":"2026-10-25T13:00:00-04:00", "pts":1, "winner":"" },
+        { "id":"w7-6", "away":"NYG", "home":"HOU", "kick":"2026-10-25T13:00:00-04:00", "pts":1, "winner":"" },
+        { "id":"w7-7", "away":"IND", "home":"MIN", "kick":"2026-10-25T13:00:00-04:00", "pts":1, "winner":"" },
+        { "id":"w7-8", "away":"MIA", "home":"NYJ", "kick":"2026-10-25T13:00:00-04:00", "pts":1, "winner":"" },
+        { "id":"w7-9", "away":"CLE", "home":"TEN", "kick":"2026-10-25T13:00:00-04:00", "pts":1, "winner":"" },
+        { "id":"w7-10", "away":"DEN", "home":"ARI", "kick":"2026-10-25T16:05:00-04:00", "pts":1, "winner":"" },
+        { "id":"w7-11", "away":"GB", "home":"DET", "kick":"2026-10-25T16:25:00-04:00", "pts":1, "winner":"" },
+        { "id":"w7-12", "away":"LAR", "home":"LV", "kick":"2026-10-25T16:25:00-04:00", "pts":1, "winner":"" },
+        { "id":"w7-13", "away":"KC", "home":"SEA", "kick":"2026-10-25T20:20:00-04:00", "pts":3, "winner":"" },
+        { "id":"w7-14", "away":"DAL", "home":"PHI", "kick":"2026-10-26T20:15:00-04:00", "pts":3, "winner":"" }
+      ],
+      "picks": {}
+    },
+    {
+      "n": 8,
+      "games": [
+        { "id":"w8-1", "away":"CAR", "home":"GB", "kick":"2026-10-29T20:15:00-04:00", "pts":1, "winner":"" },
+        { "id":"w8-2", "away":"BAL", "home":"BUF", "kick":"2026-11-01T13:00:00-05:00", "pts":1, "winner":"" },
+        { "id":"w8-3", "away":"TEN", "home":"CIN", "kick":"2026-11-01T13:00:00-05:00", "pts":1, "winner":"" },
+        { "id":"w8-4", "away":"ARI", "home":"DAL", "kick":"2026-11-01T13:00:00-05:00", "pts":1, "winner":"" },
+        { "id":"w8-5", "away":"MIN", "home":"DET", "kick":"2026-11-01T13:00:00-05:00", "pts":1, "winner":"" },
+        { "id":"w8-6", "away":"IND", "home":"JAX", "kick":"2026-11-01T13:00:00-05:00", "pts":1, "winner":"" },
+        { "id":"w8-7", "away":"LV", "home":"NYJ", "kick":"2026-11-01T13:00:00-05:00", "pts":1, "winner":"" },
+        { "id":"w8-8", "away":"CLE", "home":"PIT", "kick":"2026-11-01T13:00:00-05:00", "pts":1, "winner":"" },
+        { "id":"w8-9", "away":"ATL", "home":"TB", "kick":"2026-11-01T13:00:00-05:00", "pts":1, "winner":"" },
+        { "id":"w8-10", "away":"LAC", "home":"LAR", "kick":"2026-11-01T16:05:00-05:00", "pts":1, "winner":"" },
+        { "id":"w8-11", "away":"KC", "home":"DEN", "kick":"2026-11-01T16:25:00-05:00", "pts":1, "winner":"" },
+        { "id":"w8-12", "away":"NE", "home":"MIA", "kick":"2026-11-01T16:25:00-05:00", "pts":1, "winner":"" },
+        { "id":"w8-13", "away":"PHI", "home":"WAS", "kick":"2026-11-01T20:20:00-05:00", "pts":3, "winner":"" },
+        { "id":"w8-14", "away":"CHI", "home":"SEA", "kick":"2026-11-02T20:15:00-05:00", "pts":3, "winner":"" }
+      ],
+      "picks": {}
+    }
+  ]
+}
+</script>
+
+<div class="wrap">
+
+<header class="marquee">
+  <div class="marquee-top">
+    <span class="eyebrow">Indacochea &middot; Sobel &middot; Sebso</span>
+    <span class="eyebrow" id="seasonTag">Inaugural Season &middot; 2026</span>
+  </div>
+  <div class="brand">
+    <h1>Turbo Set<br><span class="hut">Hut</span></h1>
+    <p class="tagline">Straight up, no spreads. Primetime counts triple. Somebody has to live in the cellar.</p>
+  </div>
+</header>
+
+<div class="strip">
+  <div><span class="k">Week</span><span class="v" id="stWeek">&mdash;</span></div>
+  <div><span class="k">Next Lock</span><span class="v" id="stNext">&mdash;</span><span class="sub" id="stNextGame"></span></div>
+  <div><span class="k">Points On The Table</span><span class="v" id="stPts">&mdash;</span></div>
+  <div><span class="k">Leader</span><span class="v" id="stLead">&mdash;</span></div>
+</div>
+
+<div class="whobar">
+  <span class="lbl"><label for="whoSel">You are</label></span>
+  <select id="whoSel"></select>
+  <span class="hint" id="whoHint">pick your name to make picks or post</span>
+</div>
+
+<section class="wall" id="wall">
+  <div class="wall-head">
+    <h2>The Wall</h2>
+    <span class="n" id="wallCount"></span>
+  </div>
+  <div class="wall-compose">
+    <textarea id="wallText" rows="2" maxlength="600" placeholder="Talk your talk. Everyone in the league sees this."></textarea>
+    <button class="btn go" id="btnPost">Post</button>
+  </div>
+  <div id="wallList"></div>
+</section>
+
+<nav class="tabs" role="tablist">
+  <button class="tab" role="tab" data-view="picks" aria-selected="true">This Week</button>
+  <button class="tab" role="tab" data-view="standings" aria-selected="false">Standings</button>
+  <button class="tab" role="tab" data-view="rules" aria-selected="false">Rules</button>
+  <button class="tab" role="tab" data-view="comm" aria-selected="false">Commissioner</button>
+</nav>
+
+<!-- ============ PICKS ============ -->
+<section id="view-picks">
+  <div class="sec-head">
+    <h2 id="weekTitle">Week 1</h2>
+  </div>
+  <p class="lede" id="weekLede"></p>
+  <div class="confirm" id="subBanner" hidden></div>
+  <div id="gameList"></div>
+  <div id="slipBox" hidden>
+    <div class="window-head"><span class="name">Your pick slip</span><span class="rule"></span></div>
+    <div class="slip" id="slipText"></div>
+    <div class="row" style="margin-top:12px">
+      <a class="btn go" id="btnForm" target="_blank" rel="noopener">Submit on the form</a>
+      <button class="btn ghost sm" id="btnCopy">Copy pick slip</button>
+      <button class="btn ghost sm" id="btnEdit">Keep editing</button>
+    </div>
+    <p class="lede" style="margin-top:10px;font-size:15px" id="slipHelp"></p>
+  </div>
+</section>
+
+<!-- ============ STANDINGS ============ -->
+<section id="view-standings" hidden>
+  <div class="sec-head"><h2>Standings</h2></div>
+  <p class="lede" id="standLede"></p>
+  <div class="tablewrap">
+    <table>
+      <thead><tr>
+        <th></th><th>Player</th><th class="barcell">Season</th>
+        <th>Correct</th><th>Hit&nbsp;%</th><th>Perfect</th><th>Last&nbsp;Wk</th><th>Points</th>
+      </tr></thead>
+      <tbody id="standBody"></tbody>
+    </table>
+  </div>
+  <p class="lede" style="margin-top:16px;font-size:15px">Points are scored only on games the commissioner has marked final. A missed week scores zero &mdash; there is no makeup.</p>
+</section>
+
+<!-- ============ RULES ============ -->
+<section id="view-rules" hidden>
+  <div class="sec-head"><h2>How it works</h2></div>
+  <p class="lede">Ricardo's league, Ricardo's rules. Here they are in short form.</p>
+
+  <div class="cards">
+    <div class="card"><span class="big">1</span><h3>Point a game</h3>
+      <p>Pick the straight-up winner of every game on the slate. No point spreads, no half-measures. Each correct pick is one point.</p></div>
+    <div class="card"><span class="big">3</span><h3>Primetime</h3>
+      <p>Sunday night and Monday night games are worth three. They are the games everybody actually watches, so they are the games that swing the table.</p></div>
+    <div class="card"><span class="big">+3</span><h3>Perfect week</h3>
+      <p>Run the table &mdash; every game on the slate, primetime included &mdash; and take three bonus points on top. Week 1 is sixteen games, so a clean sweep is twenty-three.</p></div>
+    <div class="card"><span class="big">0</span><h3>If you forget</h3>
+      <p>No picks, no points. Ricardo can see the timestamp on your submission, so a pick that lands after kickoff does not count.</p></div>
+  </div>
+
+  <div class="prose">
+    <h3>The deadline</h3>
+    <p>There is no single cutoff for the week. <b>Every game closes at its own kickoff</b>, and nothing else. Get the whole slate in by Thursday if you want it off your plate &mdash; or wait on the injury report and send Sunday's games Sunday morning and the Monday nighter Monday morning.</p>
+    <p>Miss a kickoff and you lose <em>that game only</em>. The rest of your week is still live. And you can change a pick as many times as you like until its game starts &mdash; the last slip in before kickoff is the one that counts. No spreads means no reason to lock you in early.</p>
+    <h3>The prize</h3>
+    <p>To be determined, and determined by Ricardo. Whoever is on top when the regular season ends takes it.</p>
+    <h3>A hint from the commissioner</h3>
+    <p>&ldquo;Even a quick conversation with ChatGPT on a Thursday morning can help you earn points.&rdquo; Consider yourself advised.</p>
+  </div>
+
+  <details>
+    <summary>The letter that started it</summary>
+    <div class="letter">
+      <p>Hola Familia!</p>
+      <p>Welcome the inaugural season of our family pick 'em league! NFL season is right around the corner, and if your house is at all like mine, get ready for some shouting at the TV, wild screams of joy, and the heavy footsteps of defeat. Bruh...Let's Gooo!!!</p>
+      <p>We will be picking the games straight up, no point spreads to complicate the matter. Each game will be worth 1 point. However, Sunday and Monday night games, which tend to be the most watched primetime games each week, we will value at 3 points.</p>
+      <p>I'll keep track throughout the season of your picks, and with my weekly emails I'll include running standings. This way we can see who is in the lead, and who is in the cellar (cough, Tio David, cough). There will be a prize (TBD) for the league winner at the end of the season.</p>
+      <p>It has been a long and grinding training camp but you all made the team.</p>
+      <p>Turbo set...HUT!<br><span class="sig">Ricardo</span></p>
+    </div>
+  </details>
+</section>
+
+<!-- ============ COMMISSIONER ============ -->
+<section id="view-comm" hidden>
+  <div id="commGate">
+    <div class="sec-head"><h2>Commissioner</h2></div>
+    <p class="lede">This is where the schedule, the results and the standings get set. If you are not running the league, there is nothing for you here.</p>
+    <div class="field" style="max-width:280px">
+      <label for="codeIn">Commissioner code</label>
+      <input type="text" id="codeIn" autocomplete="off" placeholder="&hellip;">
+    </div>
+    <button class="btn sm" id="btnCode">Unlock</button>
+  </div>
+
+  <div id="commPanel" hidden>
+    <div class="sec-head"><h2>Commissioner</h2><span class="eyebrow" id="saveState">Nothing to save</span></div>
+    <div class="notice" id="commNotice" hidden><b></b><span></span></div>
+
+    <div class="window-head"><span class="name">1 &middot; Connect the Google Form</span><span class="rule"></span></div>
+    <ol class="steps">
+      <li>Make one Google Form with three questions, in this order: <b>Your name</b> (multiple choice, one option per player), <b>Week</b> (short answer), <b>Picks</b> (paragraph). Turn on <b>Collect email addresses</b> so you get a timestamp and a sender.</li>
+      <li>In the form's &#8942; menu choose <b>Get pre-filled link</b>. Pick <em>any</em> player for the name question, and answer the other two with the literal words <b>WEEK</b> and <b>PICKS</b>. Click <b>Get link</b>, then copy it.</li>
+      <li>Paste it below. The site reads the question IDs out of it, and from then on every player lands on the form with their picks already filled in &mdash; they just press Submit.</li>
+    </ol>
+    <div class="field"><label for="prefillIn">Pre-filled link</label>
+      <input type="url" id="prefillIn" placeholder="https://docs.google.com/forms/d/e/&hellip;/viewform?usp=pp_url&amp;entry.123=NAME&amp;&hellip;"></div>
+    <div class="row"><button class="btn sm" id="btnPrefill">Read the link</button>
+      <span class="eyebrow" id="formState">Not connected</span></div>
+
+    <div class="field"><label for="csvIn">Responses spreadsheet &mdash; published CSV link</label>
+      <input type="url" id="csvIn" placeholder="https://docs.google.com/spreadsheets/d/e/&hellip;/pub?output=csv"></div>
+    <div class="row"><button class="btn sm" id="btnCsv">Read the spreadsheet</button>
+      <span class="eyebrow" id="syncState">Not checked yet</span></div>
+
+    <div class="window-head"><span class="name">2 &middot; Set the week</span><span class="rule"></span></div>
+    <div class="row">
+      <label class="eyebrow" for="commWeekSel" style="margin:0">Editing</label>
+      <select id="commWeekSel"></select>
+      <button class="btn ghost sm" id="btnNewWeek">Start a new week</button>
+    </div>
+    <div class="field"><label for="pasteIn">Paste a slate &mdash; one game per line, <span style="text-transform:none;letter-spacing:0">e.g.</span> <span style="text-transform:none;letter-spacing:0">Sun 9/20 1:00p Bears at Lions</span></label>
+      <textarea id="pasteIn" rows="5" placeholder="Thu 9/17 8:15p Commanders at Packers&#10;Sun 9/20 1:00p Bears at Lions&#10;Sun 9/20 8:20p Chiefs at Eagles&#10;Mon 9/21 8:15p Rams at 49ers"></textarea></div>
+    <div class="row"><button class="btn sm" id="btnParse">Load these games</button>
+      <span class="eyebrow">Times are Eastern. Sunday and Monday night games are set to 3 points automatically.</span></div>
+
+    <div class="window-head"><span class="name">3 &middot; Results and point values</span><span class="rule"></span></div>
+    <div class="commgames" id="commGames"></div>
+
+    <div class="window-head"><span class="name">4 &middot; Import picks from the spreadsheet</span><span class="rule"></span></div>
+    <p class="lede" style="font-size:15.5px">Open the form's responses sheet, copy the rows, paste them here. Each pick slip carries a short code the site can read, so you do not have to type anybody's picks by hand.</p>
+    <div class="field"><textarea id="importIn" rows="5" placeholder="Paste response rows here"></textarea></div>
+    <div class="row"><button class="btn sm" id="btnImport">Import</button>
+      <span class="eyebrow" id="importState"></span></div>
+
+    <div class="window-head"><span class="name">5 &middot; Publish</span><span class="rule"></span></div>
+    <p class="lede" style="font-size:15.5px" id="pubHelp">Saving publishes a new version of this page for everyone holding the link. Only people with edit access can save.</p>
+    <div class="row"><button class="btn go" id="btnSave">Save and publish</button>
+      <span class="eyebrow" id="pubState"></span></div>
+  </div>
+</section>
+
+<div class="foot">
+  <span>Turbo Set Hut &middot; Indacochea / Sobel / Sebso family pick 'em</span>
+  <span id="footStamp"></span>
+</div>
+</div>
+
+<div class="bar" id="bar" hidden>
+  <div class="bar-in">
+    <div>
+      <div class="count" id="barCount">0 of 16</div>
+      <div class="sub" id="barSub">games picked</div>
+    </div>
+    <div class="spacer"></div>
+    <button class="btn ghost sm" id="btnClear">Clear</button>
+    <button class="btn go" id="btnReview" disabled>Review &amp; submit</button>
+  </div>
+</div>
+
+<script>
+var T = {
+  ARI:["Arizona","Cardinals","#97233F"], ATL:["Atlanta","Falcons","#A71930"],
+  BAL:["Baltimore","Ravens","#241773"],  BUF:["Buffalo","Bills","#00338D"],
+  CAR:["Carolina","Panthers","#0085CA"], CHI:["Chicago","Bears","#0B162A"],
+  CIN:["Cincinnati","Bengals","#FB4F14"],CLE:["Cleveland","Browns","#311D00"],
+  DAL:["Dallas","Cowboys","#041E42"],    DEN:["Denver","Broncos","#FA4616"],
+  DET:["Detroit","Lions","#0076B6"],     GB:["Green Bay","Packers","#203731"],
+  HOU:["Houston","Texans","#03202F"],    IND:["Indianapolis","Colts","#002C5F"],
+  JAX:["Jacksonville","Jaguars","#006778"], KC:["Kansas City","Chiefs","#E31837"],
+  LV:["Las Vegas","Raiders","#A5ACAF"],  LAC:["Los Angeles","Chargers","#0080C6"],
+  LAR:["Los Angeles","Rams","#003594"],  MIA:["Miami","Dolphins","#008E97"],
+  MIN:["Minnesota","Vikings","#4F2683"], NE:["New England","Patriots","#002244"],
+  NO:["New Orleans","Saints","#A08A58"], NYG:["New York","Giants","#0B2265"],
+  NYJ:["New York","Jets","#125740"],     PHI:["Philadelphia","Eagles","#004C54"],
+  PIT:["Pittsburgh","Steelers","#FFB612"],SF:["San Francisco","49ers","#AA0000"],
+  SEA:["Seattle","Seahawks","#69BE28"],  TB:["Tampa Bay","Buccaneers","#D50A0A"],
+  TEN:["Tennessee","Titans","#4B92DB"],  WAS:["Washington","Commanders","#5A1414"]
+};
+var ALIAS = {};
+Object.keys(T).forEach(function(k){
+  ALIAS[k.toLowerCase()] = k;
+  ALIAS[T[k][1].toLowerCase()] = k;
+  ALIAS[(T[k][0]+" "+T[k][1]).toLowerCase()] = k;
+});
+ALIAS["ny jets"]="NYJ"; ALIAS["ny giants"]="NYG"; ALIAS["jags"]="JAX";
+ALIAS["niners"]="SF"; ALIAS["49ers"]="SF"; ALIAS["bucs"]="TB"; ALIAS["wash"]="WAS";
+
+function $(s){ return document.querySelector(s); }
+function el(t,c,x){ var e=document.createElement(t); if(c)e.className=c;
+  if(x!==undefined)e.textContent=x; return e; }
+function dark(hex){ var r=parseInt(hex.substr(1,2),16),g=parseInt(hex.substr(3,2),16),
+  b=parseInt(hex.substr(5,2),16); return (0.299*r+0.587*g+0.114*b) < 150; }
+
+var S = JSON.parse($("#league-state").textContent);
+var me = null, myPicks = {}, submitted = {}, dirty = false, unlocked = false;
+try {
+  me = localStorage.getItem("tsh.me");
+  myPicks = JSON.parse(localStorage.getItem("tsh.picks") || "{}");
+  submitted = JSON.parse(localStorage.getItem("tsh.sub") || "{}");
+} catch(e){}
+function remember(){
+  try {
+    localStorage.setItem("tsh.me", me || "");
+    localStorage.setItem("tsh.picks", JSON.stringify(myPicks));
+    localStorage.setItem("tsh.sub", JSON.stringify(submitted));
+  } catch(e){}
+}
+
+/* ---------- helpers ---------- */
+function wk(n){ for(var i=0;i<S.weeks.length;i++) if(S.weeks[i].n===n) return S.weeks[i];
+  return null; }
+function cur(){ return wk(S.currentWeek) || S.weeks[S.weeks.length-1] || null; }
+function locked(g){ return Date.now() >= new Date(g.kick).getTime(); }
+function slotName(g){
+  var d = new Date(g.kick), day = d.getDay(), h = d.getHours();
+  var etH = +g.kick.slice(11,13), etDay = new Date(g.kick.slice(0,10)+"T12:00:00Z").getUTCDay();
+  if(etDay===0) return etH>=19 ? "Sunday night" : (etH>=15 ? "Sunday late" : "Sunday early");
+  if(etDay===1) return "Monday night";
+  if(etDay===4) return "Thursday night";
+  if(etDay===3) return "Wednesday night";
+  if(etDay===6) return "Saturday";
+  if(etDay===5) return "Friday";
+  return "Tuesday";
+}
+function fmtKick(g){
+  return new Date(g.kick).toLocaleString([], { weekday:"short", month:"numeric",
+    day:"numeric", hour:"numeric", minute:"2-digit" });
+}
+function autoPts(iso){
+  var etH = +iso.slice(11,13), etDay = new Date(iso.slice(0,10)+"T12:00:00Z").getUTCDay();
+  return ((etDay===0 && etH>=19) || etDay===1) ? 3 : 1;
+}
+function until(ts){
+  var s = Math.floor((ts - Date.now())/1000);
+  if(s<0) return null;
+  var d=Math.floor(s/86400), h=Math.floor(s%86400/3600), m=Math.floor(s%3600/60);
+  if(d>0) return d+"d "+h+"h";
+  if(h>0) return h+"h "+m+"m";
+  return m+"m";
+}
+
+/* ---------- scoring ---------- */
+var PERFECT_BONUS = 3;
+
+function standings(){
+  var rows = S.players.map(function(p){
+    return { name:p, pts:0, right:0, graded:0, last:0, perfect:0 };
+  });
+  var byName = {}; rows.forEach(function(r){ byName[r.name]=r; });
+  var lg = lastGradedWeek();
+
+  S.weeks.forEach(function(w){
+    var done = w.games.filter(function(g){ return g.winner; });
+    if(!done.length) return;
+    /* a perfect week only counts once every game in it is final */
+    var weekComplete = done.length === w.games.length;
+    var isLast = (w.n === lg);
+
+    Object.keys(w.picks || {}).forEach(function(p){
+      var r = byName[p]; if(!r) return;
+      var mine = w.picks[p], wkPts = 0, wkRight = 0;
+      done.forEach(function(g){
+        var pick = mine[g.id]; if(!pick) return;
+        r.graded++;
+        if(pick === g.winner){ r.right++; wkRight++; wkPts += g.pts; }
+      });
+      if(weekComplete && wkRight === w.games.length){
+        wkPts += PERFECT_BONUS; r.perfect++;
+      }
+      r.pts += wkPts;
+      if(isLast) r.last = wkPts;
+    });
+  });
+
+  rows.sort(function(a,b){ return b.pts-a.pts || b.right-a.right ||
+    a.name.localeCompare(b.name); });
+  return rows;
+}
+function lastGradedWeek(){
+  var n = 0;
+  S.weeks.forEach(function(w){
+    if(w.games.some(function(g){ return g.winner; })) n = Math.max(n, w.n);
+  });
+  return n;
+}
+
+/* ---------- status strip ---------- */
+function renderStrip(){
+  var w = cur();
+  $("#seasonTag").textContent = "Inaugural Season · " + S.season;
+  if(!w){ return; }
+  $("#stWeek").textContent = "Wk " + String(w.n).padStart(2,"0");
+  var open = w.games.filter(function(g){ return !locked(g); })
+    .sort(function(a,b){ return new Date(a.kick)-new Date(b.kick); });
+  var nx = $("#stNext"), ng = $("#stNextGame");
+  if(open.length){
+    var g0 = open[0], t = until(new Date(g0.kick).getTime());
+    nx.textContent = t || "now";
+    nx.classList.toggle("urgent", (new Date(g0.kick) - Date.now()) < 6*3600*1000);
+    /* each game has its own deadline, so name the one this clock belongs to */
+    ng.textContent = (T[g0.away] ? T[g0.away][1] : g0.away) + " at " +
+      (T[g0.home] ? T[g0.home][1] : g0.home);
+  } else {
+    nx.textContent = "Week closed"; nx.classList.remove("urgent");
+    ng.textContent = "every game has kicked off";
+  }
+  var pts = open.reduce(function(a,g){ return a+g.pts; },0);
+  $("#stPts").textContent = pts ? pts : "0";
+  var st = standings();
+  $("#stLead").textContent = (st[0] && st[0].pts > 0) ? st[0].name : "Nobody yet";
+  $("#footStamp").textContent = "Week " + w.n + " · " + w.games.length + " games";
+}
+
+/* ---------- week / picks ---------- */
+function renderWeek(){
+  var w = cur(), host = $("#gameList");
+  host.textContent = "";
+  if(!w){ host.appendChild(el("p","lede","No slate loaded yet. The commissioner adds the week's games in the Commissioner tab.")); return; }
+  $("#weekTitle").textContent = "Week " + w.n;
+
+  var total = w.games.reduce(function(a,g){ return a+g.pts; },0);
+  var openN = w.games.filter(function(g){ return !locked(g); }).length;
+  $("#weekLede").textContent = w.games.length + " games, " + total +
+    " points on the board — " + (total + PERFECT_BONUS) +
+    " if you run the table. " +
+    (openN === 0 ? "Every game has kicked off — this week is closed."
+      : openN === w.games.length ? "Tap a team to pick it. Each game locks at its own kickoff."
+      : openN + " still open. The rest have kicked off and are locked.");
+
+  var sel = $("#whoSel");
+  if(!sel.options.length){
+    sel.appendChild(new Option("Choose your name…",""));
+    S.players.forEach(function(p){ sel.appendChild(new Option(p,p)); });
+  }
+  sel.value = me || "";
+
+  var mine = myPicks[w.n] || (myPicks[w.n] = {});
+  var groups = [], seen = {};
+  w.games.forEach(function(g){
+    var s = slotName(g);
+    if(!seen[s]){ seen[s] = { name:s, games:[] }; groups.push(seen[s]); }
+    seen[s].games.push(g);
+  });
+
+  groups.forEach(function(grp){
+    var wrap = el("div","window");
+    var hd = el("div","window-head");
+    hd.appendChild(el("span","name", grp.name));
+    hd.appendChild(el("span","rule"));
+    wrap.appendChild(hd);
+    var list = el("div","games");
+    grp.games.forEach(function(g){ list.appendChild(gameRow(g, w, mine)); });
+    wrap.appendChild(list);
+    host.appendChild(wrap);
+  });
+  renderConfirm();
+  renderBar();
+}
+
+function gameRow(g, w, mine){
+  var lk = locked(g), row = el("div","game" + (g.pts===3?" tri":"") + (lk?" locked":""));
+  row.appendChild(el("div","rail"));
+  var body = el("div","gbody");
+
+  var meta = el("div","gmeta");
+  meta.appendChild(el("span",null,fmtKick(g)));
+  meta.appendChild(el("span","pts", g.pts===3 ? "×3 primetime" : "1 pt"));
+  if(g.winner) meta.appendChild(el("span","lockchip","Final"));
+  else if(lk) meta.appendChild(el("span","lockchip","Locked"));
+  body.appendChild(meta);
+
+  var mu = el("div","matchup");
+  [g.away, g.home].forEach(function(ab, i){
+    if(i===1) mu.appendChild(el("span","at","at"));
+    var t = T[ab] || ["","" + ab, "#888"];
+    var b = el("button","team");
+    var d = el("span","dot"); d.style.background = t[2]; d.style.color = t[2];
+    b.appendChild(d);
+    b.appendChild(el("span","tname", t[1]));
+    b.appendChild(el("span","tcity", ab));
+    if(mine[g.id] === ab) b.classList.add("picked");
+    if(g.winner){
+      if(g.winner === ab) b.classList.add("winner");
+      if(mine[g.id] === ab) b.classList.add(mine[g.id] === g.winner ? "correct" : "wrong");
+    }
+    if(lk){ b.disabled = true; }
+    else b.addEventListener("click", function(){
+      if(mine[g.id] === ab) delete mine[g.id]; else mine[g.id] = ab;
+      remember(); renderWeek();
+    });
+    mu.appendChild(b);
+  });
+  body.appendChild(mu);
+
+  var note = el("div","gnote");
+  if(lk){
+    var tally = {}, n = 0;
+    Object.keys(w.picks||{}).forEach(function(p){
+      var v = w.picks[p][g.id]; if(!v) return; tally[v] = (tally[v]||0)+1; n++;
+    });
+    if(n){
+      var parts = Object.keys(tally).map(function(k){ return tally[k]+" "+k; });
+      note.appendChild(el("span",null,"family: "));
+      var bb = el("b",null,parts.join(" · ")); note.appendChild(bb);
+    } else note.textContent = "no picks recorded";
+  } else if(mine[g.id]){
+    note.textContent = "locked in on your device";
+  } else {
+    var t2 = until(new Date(g.kick).getTime());
+    note.textContent = t2 ? t2 + " to pick" : "";
+  }
+  body.appendChild(note);
+  row.appendChild(body);
+  return row;
+}
+
+function renderBar(){
+  var w = cur(), bar = $("#bar");
+  if(!w || $("#view-picks").hidden){ bar.hidden = true; return; }
+  var mine = myPicks[w.n] || {};
+  var open = w.games.filter(function(g){ return !locked(g); });
+  if(!open.length){ bar.hidden = true; return; }
+  bar.hidden = false;
+  var done = open.filter(function(g){ return mine[g.id]; }).length;
+  var pts = open.filter(function(g){ return mine[g.id]; })
+    .reduce(function(a,g){ return a+g.pts; },0);
+  $("#barCount").textContent = done + " of " + open.length;
+  $("#barSub").textContent = me
+    ? (done === open.length ? pts + " points riding on it, " + me
+       : "games picked · " + (open.length-done) + " to go")
+    : "pick your name above first";
+  var ok = me && done > 0;
+  $("#btnReview").disabled = !ok;
+  $("#btnReview").textContent = submitted[w.n] ? "Review & resubmit" : "Review & submit";
+}
+
+/* ---------- standings ---------- */
+function renderStandings(){
+  var rows = standings(), body = $("#standBody"), lg = lastGradedWeek();
+  body.textContent = "";
+  var max = Math.max.apply(null, rows.map(function(r){ return r.pts; }).concat([1]));
+  var any = rows.some(function(r){ return r.graded > 0; });
+  $("#standLede").textContent = any
+    ? "Through week " + lg + ". " + rows[0].name + " is on top; somebody has to be in the cellar."
+    : "Nothing scored yet — the table fills in once Ricardo marks Week 1 final. Everybody starts at zero, which is the last time this list will be fair.";
+  rows.forEach(function(r,i){
+    var tr = el("tr");
+    if(i===0 && r.pts>0) tr.className = "leader";
+    if(i===rows.length-1 && any) tr.className = (tr.className+" cellar").trim();
+    if(r.name === me) tr.className = (tr.className+" me").trim();
+    tr.appendChild(el("td","rank", any ? "#"+(i+1) : "—"));
+    var nd = el("td"); nd.appendChild(el("span","pname", r.name)); tr.appendChild(nd);
+    var bc = el("td","barcell"), m = el("div","meter"), fill = el("i");
+    fill.style.width = (r.pts/max*100 || 0) + "%"; m.appendChild(fill);
+    bc.appendChild(m); tr.appendChild(bc);
+    tr.appendChild(el("td",null, r.graded ? r.right + "/" + r.graded : "—"));
+    tr.appendChild(el("td",null, r.graded ? Math.round(r.right/r.graded*100)+"%" : "—"));
+    tr.appendChild(el("td",null, r.perfect ? "★ " + r.perfect : (any ? "0" : "—")));
+    tr.appendChild(el("td",null, lg ? String(r.last) : "—"));
+    tr.appendChild(el("td","total", String(r.pts)));
+    body.appendChild(tr);
+  });
+}
+</script>
+
+<script>
+/* Pristine copy of the whole document, captured after everything is parsed but
+   before anything renders, so "save and publish" ships a clean page + new state.
+   Captured here, in the LAST script, or the republished page would be missing
+   every script that had not been parsed yet. */
+var PRISTINE = "<!doctype html>\n" + document.documentElement.outerHTML;
+
+/* ---------- pick slip + google form handoff ---------- */
+function code(w, mine){
+  var parts = w.games.filter(function(g){ return mine[g.id]; })
+    .map(function(g){ return g.id.split("-")[1] + "=" + mine[g.id]; });
+  return "W" + w.n + "|" + parts.join("|");
+}
+function slip(){
+  var w = cur(), mine = myPicks[w.n] || {};
+  var lines = ["TURBO SET HUT — WEEK " + w.n, me, ""];
+  var pts = 0;
+  w.games.forEach(function(g){
+    var p = mine[g.id];
+    var label = (T[g.away]?T[g.away][1]:g.away) + " at " + (T[g.home]?T[g.home][1]:g.home);
+    var pad = label.length < 34 ? new Array(35-label.length).join(" ") : "  ";
+    var mark = g.pts === 3 ? "  (3 pts)" : "";
+    if(p){ pts += g.pts; lines.push("  " + label + pad + (T[p]?T[p][1].toUpperCase():p) + mark); }
+    else if(locked(g)) lines.push("  " + label + pad + "— locked, no pick" + mark);
+    else lines.push("  " + label + pad + "— no pick" + mark);
+  });
+  lines.push("");
+  lines.push("  " + pts + " points riding on it.");
+  lines.push("");
+  lines.push("CODE " + code(w, mine));
+  return lines.join("\n");
+}
+function formURL(){
+  var w = cur(), mine = myPicks[w.n] || {}, f = S.form;
+  if(!f.action) return null;
+  var u = f.action + (f.action.indexOf("?") > -1 ? "&" : "?") + "usp=pp_url";
+  if(f.eName)  u += "&" + f.eName + "=" + encodeURIComponent(me);
+  if(f.eWeek)  u += "&" + f.eWeek + "=" + encodeURIComponent(String(w.n));
+  if(f.ePicks) u += "&" + f.ePicks + "=" + encodeURIComponent(slip());
+  return u;
+}
+function showSlip(){
+  var w = cur();
+  $("#slipText").textContent = slip();
+  $("#slipBox").hidden = false;
+  var url = formURL();
+  $("#btnForm").hidden = !url;
+  if(url) $("#btnForm").href = url;
+  $("#slipHelp").textContent = url
+    ? "The form opens with your name, the week and every pick already filled in. Press Submit there and you are done — Ricardo gets the timestamp."
+    : "The commissioner has not connected the league's Google Form yet. Copy your slip and send it to Ricardo the usual way; once the form is connected this button will fill it in for you.";
+  $("#slipBox").scrollIntoView({ behavior:"smooth", block:"nearest" });
+}
+
+/* ---------- submission confirmation ----------
+   Per-device only: this browser knows what it sent, nothing more. It never
+   claims a pick is locked — only kickoff does that. */
+function renderConfirm(){
+  var w = cur(), b = $("#subBanner");
+  if(!w){ b.hidden = true; return; }
+  var s = submitted[w.n];
+  if(!s || typeof s !== "object"){ b.hidden = true; return; }
+  var mine = myPicks[w.n] || {};
+  var changed = code(w, mine) !== s.code;
+  var openLeft = w.games.filter(function(g){ return !locked(g); }).length;
+  var when = new Date(s.at).toLocaleString([], { weekday:"short", hour:"numeric",
+    minute:"2-digit" });
+
+  b.hidden = false;
+  b.className = "confirm" + (changed ? " stale" : "");
+  b.textContent = "";
+  b.appendChild(el("span","tick", changed ? "!" : "✓"));
+  var box = el("div");
+  if(changed){
+    box.appendChild(el("b", null, "You have changed picks since you submitted"));
+    box.appendChild(el("p", null, "Your last slip went in " + when + ". Ricardo still has the old picks — send an updated slip and he will take the newer one, since the last submission before kickoff is the one that counts."));
+  } else {
+    box.appendChild(el("b", null, "Week " + w.n + " submitted as " + s.who));
+    box.appendChild(el("p", null, "Sent " + when + " with " + s.n + " of " +
+      w.games.length + " games. " + (openLeft
+        ? "You can still change any of the " + openLeft + " games that have not kicked off — just submit again."
+        : "Every game has kicked off. Nothing left to change.")));
+  }
+  b.appendChild(box);
+}
+
+/* ---------- reading the responses spreadsheet ----------
+   Ricardo publishes the sheet to the web as CSV; the page reads it directly,
+   so nobody copies picks by hand. Google serves it with
+   access-control-allow-origin:*, so any host can fetch it — except inside the
+   Claude artifact viewer, whose CSP blocks all fetch. There the manual import
+   in the commissioner panel is still the way in. */
+function parseCSV(txt){
+  var rows = [], row = [], cur = "", q = false, c;
+  for(var i = 0; i < txt.length; i++){
+    c = txt.charAt(i);
+    if(q){
+      if(c === '"'){
+        if(txt.charAt(i+1) === '"'){ cur += '"'; i++; } else q = false;
+      } else cur += c;
+    } else if(c === '"') q = true;
+    else if(c === ","){ row.push(cur); cur = ""; }
+    else if(c === "\n"){ row.push(cur); rows.push(row); row = []; cur = ""; }
+    else if(c !== "\r") cur += c;
+  }
+  if(cur.length || row.length){ row.push(cur); rows.push(row); }
+  return rows;
+}
+
+var WALL = [];
+
+function applyRows(rows){
+  if(rows.length < 2) return 0;
+  var head = rows[0].map(function(h){ return h.trim().toLowerCase(); });
+  var iName = head.indexOf("your name"), iPicks = head.indexOf("picks"),
+      iWeek = head.indexOf("week"), iTime = head.indexOf("timestamp");
+  if(iName < 0 || iPicks < 0) return 0;
+  var n = 0, wall = [];
+  /* rows arrive oldest-first, so a later slip merges over an earlier one —
+     which is exactly the rule: the last submission before kickoff counts */
+  for(var r = 1; r < rows.length; r++){
+    var row = rows[r]; if(!row || !row[iName]) continue;
+    var who = row[iName].trim();
+    if(S.players.indexOf(who) < 0) continue;
+    var body = String(row[iPicks] || "");
+
+    /* a wall post is the same form with WALL in the week box — the pick
+       parser below ignores it, so posts and picks share one spreadsheet */
+    if(iWeek > -1 && String(row[iWeek] || "").trim().toUpperCase() === "WALL"){
+      if(body.trim()) wall.push({ who:who, at:(iTime > -1 ? row[iTime] : ""),
+        text:body.trim() });
+      continue;
+    }
+
+    var m = body.match(/W(\d+)\|([0-9]+=[A-Z]{2,3}(?:\|[0-9]+=[A-Z]{2,3})*)/);
+    if(!m) continue;
+    var w = wk(+m[1]); if(!w) continue;
+    var picks = {};
+    m[2].split("|").forEach(function(p){
+      var kv = p.split("=");
+      if(T[kv[1]]) picks["w" + w.n + "-" + kv[0]] = kv[1];
+    });
+    w.picks = w.picks || {};
+    w.picks[who] = Object.assign(w.picks[who] || {}, picks);
+    n++;
+  }
+  WALL = wall.reverse();   /* newest first */
+  return n;
+}
+
+/* ---------- the wall ---------- */
+var wallAll = false;
+function renderWall(){
+  var host = $("#wallList"), n = WALL.length;
+  $("#wallCount").textContent = n ? n + (n === 1 ? " post" : " posts") : "";
+  host.textContent = "";
+  if(!n){
+    var e = el("p","wall-empty", S.picksCsv && !IN_ARTIFACT
+      ? "Nothing on the wall yet. Be the first to talk some trash."
+      : "The wall reads posts from the league spreadsheet, which this page cannot reach from inside Claude. On the published site it fills in by itself.");
+    host.appendChild(e);
+    return;
+  }
+  var shown = wallAll ? WALL : WALL.slice(0, 6);
+  var grid = el("div","posts");
+  shown.forEach(function(p){
+    var c = el("div","post"), meta = el("div","meta");
+    meta.appendChild(el("span","from", p.who));
+    var d = p.at ? new Date(p.at) : null;
+    meta.appendChild(el("span","when", d && !isNaN(d)
+      ? d.toLocaleString([], { month:"numeric", day:"numeric", hour:"numeric",
+          minute:"2-digit" })
+      : ""));
+    c.appendChild(meta);
+    c.appendChild(el("p", null, p.text));
+    grid.appendChild(c);
+  });
+  host.appendChild(grid);
+  if(WALL.length > 6){
+    var more = el("button","btn ghost sm", wallAll ? "Show fewer"
+      : "Show all " + WALL.length);
+    more.style.marginTop = "12px";
+    more.addEventListener("click", function(){ wallAll = !wallAll; renderWall(); });
+    host.appendChild(more);
+  }
+}
+
+$("#btnPost").addEventListener("click", function(){
+  var txt = $("#wallText").value.trim();
+  if(!me){ $("#whoHint").textContent = "choose your name first"; $("#whoSel").focus(); return; }
+  if(!txt) { $("#wallText").focus(); return; }
+  var f = S.form;
+  if(!f.action){ $("#whoHint").textContent = "the league form is not connected yet"; return; }
+  var u = f.action + "?usp=pp_url" +
+    "&" + f.eName  + "=" + encodeURIComponent(me) +
+    "&" + f.eWeek  + "=WALL" +
+    "&" + f.ePicks + "=" + encodeURIComponent(txt);
+  window.open(u, "_blank", "noopener");
+  $("#wallText").value = "";
+  $("#whoHint").textContent = "press Submit on the form and your post goes up";
+});
+
+function syncNote(msg){
+  var e = document.getElementById("syncState");
+  if(e) e.textContent = msg;
+}
+async function syncPicks(){
+  if(!S.picksCsv) return;
+  try {
+    var res = await fetch(S.picksCsv, { cache:"no-store" });
+    if(!res.ok) throw new Error("HTTP " + res.status);
+    var n = applyRows(parseCSV(await res.text()));
+    syncNote(n ? n + " pick slips read from the spreadsheet"
+               : "Spreadsheet reached — no picks submitted yet");
+    renderStandings(); renderWeek(); renderStrip(); renderWall();
+  } catch(e){
+    renderWall();
+    syncNote(IN_ARTIFACT
+      ? "Live reading is blocked inside Claude — put the site on its own web address to switch it on"
+      : "Could not reach the spreadsheet — check the link");
+  }
+}
+
+/* ---------- tabs ---------- */
+function show(v){
+  ["picks","standings","rules","comm"].forEach(function(k){
+    $("#view-"+k).hidden = (k !== v);
+  });
+  document.querySelectorAll(".tab").forEach(function(t){
+    t.setAttribute("aria-selected", t.dataset.view === v ? "true" : "false");
+  });
+  if(v === "standings") renderStandings();
+  if(v === "comm" && unlocked) renderComm();
+  renderBar();
+}
+document.querySelectorAll(".tab").forEach(function(t){
+  t.addEventListener("click", function(){ show(t.dataset.view); });
+});
+
+/* ---------- commissioner ---------- */
+function mark(){ dirty = true; $("#saveState").textContent = "Unsaved changes"; }
+
+function renderComm(){
+  var sel = $("#commWeekSel");
+  sel.textContent = "";
+  S.weeks.forEach(function(w){
+    sel.appendChild(new Option("Week " + w.n, String(w.n)));
+  });
+  sel.value = String(S.currentWeek);
+  if(!sel.value && sel.options.length) sel.value = sel.options[0].value;
+  var w = wk(+sel.value);
+  var host = $("#commGames"); host.textContent = "";
+  if(!w || !w.games.length){
+    host.appendChild(el("p","lede","No games in this week yet — paste a slate above."));
+    return;
+  }
+  w.games.forEach(function(g){
+    var r = el("div","cg");
+    r.appendChild(el("span",null,fmtKick(g)));
+    var who = el("span","who", (T[g.away]?T[g.away][1]:g.away) + " at " +
+      (T[g.home]?T[g.home][1]:g.home));
+    r.appendChild(who);
+    [g.away, g.home].forEach(function(ab){
+      var b = el("button",null,ab);
+      if(g.winner === ab) b.classList.add("on");
+      b.addEventListener("click", function(){
+        g.winner = (g.winner === ab) ? "" : ab; mark(); renderComm();
+      });
+      r.appendChild(b);
+    });
+    var t3 = el("button","tri", g.pts === 3 ? "3 pts" : "1 pt");
+    if(g.pts === 3) t3.classList.add("on");
+    t3.addEventListener("click", function(){
+      g.pts = g.pts === 3 ? 1 : 3; mark(); renderComm();
+    });
+    r.appendChild(t3);
+    host.appendChild(r);
+  });
+}
+
+function parseSlate(text, n){
+  var year = +S.season, out = [], i = 0;
+  text.split("\n").forEach(function(raw){
+    var line = raw.trim(); if(!line) return;
+    var md = line.match(/(\d{1,2})\/(\d{1,2})/);
+    var tm = line.match(/(\d{1,2}):(\d{2})\s*([apAP])/);
+    var rest = line;
+    if(tm) rest = line.slice(line.indexOf(tm[0]) + tm[0].length);
+    else if(md) rest = line.slice(line.indexOf(md[0]) + md[0].length);
+    rest = rest.replace(/^[mM]\b/, "").trim();
+    var sides = rest.split(/\s+(?:at|@|vs\.?)\s+/i);
+    if(sides.length < 2) return;
+    var away = ALIAS[sides[0].toLowerCase().replace(/[^a-z0-9 ]/g,"").trim()];
+    var home = ALIAS[sides[1].toLowerCase().replace(/[^a-z0-9 ]/g,"").replace(/\s*\(.*/,"").trim()];
+    if(!away || !home) return;
+    var mo = md ? +md[1] : 9, da = md ? +md[2] : 1;
+    var yy = mo <= 2 ? year + 1 : year;
+    var hh = tm ? +tm[1] : 13, mi = tm ? +tm[2] : 0;
+    if(tm && /p/i.test(tm[3]) && hh < 12) hh += 12;
+    if(tm && /a/i.test(tm[3]) && hh === 12) hh = 0;
+    var dst = (yy === year && (mo < 11 || (mo === 11 && da < 1)));
+    var iso = yy + "-" + String(mo).padStart(2,"0") + "-" + String(da).padStart(2,"0") +
+      "T" + String(hh).padStart(2,"0") + ":" + String(mi).padStart(2,"0") + ":00" +
+      (dst ? "-04:00" : "-05:00");
+    i++;
+    out.push({ id:"w"+n+"-"+i, away:away, home:home, kick:iso, pts:autoPts(iso), winner:"" });
+  });
+  out.sort(function(a,b){ return new Date(a.kick) - new Date(b.kick); });
+  out.forEach(function(g,k){ g.id = "w"+n+"-"+(k+1); });
+  return out;
+}
+
+function notice(title, msg){
+  var n = $("#commNotice");
+  n.hidden = false;
+  n.querySelector("b").textContent = title;
+  n.querySelector("span").textContent = msg;
+}
+
+$("#btnCode").addEventListener("click", function(){
+  if($("#codeIn").value.trim().toLowerCase() === String(S.commishCode).toLowerCase()){
+    unlocked = true; $("#commGate").hidden = true; $("#commPanel").hidden = false;
+    $("#formState").textContent = S.form.action ? "Connected" : "Not connected";
+    $("#csvIn").value = S.picksCsv || "";
+    renderComm(); syncPicks();
+  } else notice("Wrong code", "Ask Ricardo. This code only keeps cousins from editing the schedule by accident — it is not security.");
+});
+$("#codeIn").addEventListener("keydown", function(e){ if(e.key==="Enter") $("#btnCode").click(); });
+
+$("#commWeekSel").addEventListener("change", function(){
+  S.currentWeek = +this.value; mark(); renderComm(); renderWeek(); renderStrip();
+});
+$("#btnNewWeek").addEventListener("click", function(){
+  var n = Math.max.apply(null, S.weeks.map(function(w){ return w.n; }).concat([0])) + 1;
+  S.weeks.push({ n:n, games:[], picks:{} });
+  S.currentWeek = n; mark(); renderComm(); renderWeek(); renderStrip();
+  notice("Week " + n + " started", "Paste the slate below, then save and publish.");
+});
+$("#btnParse").addEventListener("click", function(){
+  var w = wk(+$("#commWeekSel").value); if(!w) return;
+  var games = parseSlate($("#pasteIn").value, w.n);
+  if(!games.length){ notice("Nothing read", "Each line needs two team names with \"at\" or \"@\" between them, e.g. Sun 9/20 1:00p Bears at Lions."); return; }
+  w.games = games; mark(); renderComm(); renderWeek(); renderStrip();
+  notice(games.length + " games loaded", "Check the point values below — Sunday and Monday night were set to 3 automatically.");
+  $("#pasteIn").value = "";
+});
+$("#btnPrefill").addEventListener("click", function(){
+  var raw = $("#prefillIn").value.trim();
+  try {
+    var u = new URL(raw), found = 0;
+    S.form.action = u.origin + u.pathname;
+    u.searchParams.forEach(function(v,k){
+      if(k.indexOf("entry.") !== 0) return;
+      /* the name question is multiple choice, so a pre-filled link usually
+         carries a real player's name there rather than the word NAME */
+      if(/^NAME$/i.test(v) || S.players.indexOf(v) > -1) { S.form.eName = k; found++; }
+      if(/^WEEK$/i.test(v)) { S.form.eWeek = k; found++; }
+      if(/^PICKS$/i.test(v)){ S.form.ePicks = k; found++; }
+    });
+    if(found < 3){
+      notice("Read " + found + " of 3 questions", "Get a fresh pre-filled link where the three answers are exactly NAME, WEEK and PICKS.");
+    } else {
+      notice("Form connected", "Players will now land on the form with everything filled in. Save and publish to make it live.");
+    }
+    $("#formState").textContent = found >= 3 ? "Connected" : "Partly connected";
+    mark();
+  } catch(e){ notice("Not a link", "Paste the whole pre-filled URL, starting with https://"); }
+});
+$("#btnCsv").addEventListener("click", function(){
+  S.picksCsv = $("#csvIn").value.trim();
+  mark(); syncNote("Checking…"); syncPicks();
+});
+$("#btnImport").addEventListener("click", function(){
+  var lines = $("#importIn").value.split("\n"), n = 0, missed = 0;
+  lines.forEach(function(line){
+    var m = line.match(/W(\d+)\|([0-9]+=[A-Z]{2,3}(?:\|[0-9]+=[A-Z]{2,3})*)/);
+    if(!m) return;
+    var w = wk(+m[1]); if(!w){ missed++; return; }
+    var who = null;
+    S.players.forEach(function(p){
+      if(new RegExp("(^|[^a-z])" + p + "([^a-z]|$)", "i").test(line)) who = p;
+    });
+    if(!who){ missed++; return; }
+    var picks = {};
+    m[2].split("|").forEach(function(pair){
+      var kv = pair.split("=");
+      if(T[kv[1]]) picks["w" + w.n + "-" + kv[0]] = kv[1];
+    });
+    w.picks = w.picks || {};
+    /* merge: the rules let a player send Thursday picks now and Sunday's later,
+       so a second slip must not wipe the first */
+    w.picks[who] = Object.assign(w.picks[who] || {}, picks); n++;
+  });
+  $("#importState").textContent = n + " imported" + (missed ? ", " + missed + " skipped" : "");
+  if(n){ mark(); renderStandings(); renderWeek(); renderStrip(); }
+  else notice("Nothing imported", "Each row needs a player's name and the CODE line from their pick slip.");
+});
+/* Rebuild the whole page with the current league state swapped in. */
+function buildDoc(){
+  var open = '<scr' + 'ipt type="application/json" id="league-state">';
+  var close = '<' + '/script>';
+  var i = PRISTINE.indexOf(open), j = PRISTINE.indexOf(close, i);
+  return PRISTINE.slice(0, i + open.length) + "\n" + JSON.stringify(S, null, 2) +
+    "\n" + PRISTINE.slice(j);
+}
+
+/* Two homes, two ways to save. Inside a Claude artifact the page republishes
+   itself. On an ordinary host (Vercel and friends) there is nothing to publish
+   to, so hand over the rebuilt file to re-upload. */
+var IN_ARTIFACT = !!(window.claude && window.claude.use);
+
+$("#btnSave").addEventListener("click", async function(){
+  var btn = this, ps = $("#pubState");
+  btn.disabled = true;
+  var out = buildDoc();
+
+  if(!IN_ARTIFACT){
+    try {
+      var url = URL.createObjectURL(new Blob([out], { type:"text/html" }));
+      var a = document.createElement("a");
+      a.href = url; a.download = "index.html";
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+      dirty = false;
+      ps.textContent = "Downloaded index.html — upload it to replace the site";
+      $("#saveState").textContent = "Saved to your downloads";
+    } catch(e){
+      ps.textContent = "Could not build the file — " + ((e && e.message) || "try again");
+    }
+    btn.disabled = false;
+    return;
+  }
+
+  ps.textContent = "Saving…";
+  try {
+    var cap = await window.claude.use("artifact");
+    if(!cap){ ps.textContent = "Saving is not available in this view"; btn.disabled = false; return; }
+    await cap.publish(out);
+    dirty = false;
+    ps.textContent = "Published";
+    $("#saveState").textContent = "Saved";
+  } catch(e){
+    ps.textContent = (e && e.code === "not_writer")
+      ? "You need edit access on this page to save"
+      : "Could not save — " + ((e && e.message) || "try again");
+  }
+  btn.disabled = false;
+});
+
+/* ---------- picks tab wiring ---------- */
+$("#whoSel").addEventListener("change", function(){
+  me = this.value || null; remember();
+  this.setAttribute("data-empty", me ? "0" : "1");
+  $("#whoHint").textContent = me
+    ? "picks and posts will go up under your name"
+    : "pick your name to make picks or post";
+  renderWeek(); renderStandings();
+});
+$("#btnReview").addEventListener("click", function(){ showSlip(); });
+$("#btnEdit").addEventListener("click", function(){ $("#slipBox").hidden = true; });
+$("#btnClear").addEventListener("click", function(){
+  var w = cur(); if(!w) return;
+  var mine = myPicks[w.n] || {};
+  w.games.forEach(function(g){ if(!locked(g)) delete mine[g.id]; });
+  remember(); $("#slipBox").hidden = true; renderWeek();
+});
+$("#btnCopy").addEventListener("click", async function(){
+  var b = this;
+  try { await navigator.clipboard.writeText(slip()); b.textContent = "Copied"; }
+  catch(e){
+    var r = document.createRange(); r.selectNodeContents($("#slipText"));
+    var s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
+    b.textContent = "Selected — press ⌘C";
+  }
+  /* with no form connected, copying the slip IS the handoff, so it counts as
+     submitting; keep the slip on screen so they can still paste it */
+  if(!formURL()) recordSubmit(false);
+  setTimeout(function(){ b.textContent = "Copy pick slip"; }, 2200);
+});
+function recordSubmit(hide){
+  var w = cur(); if(!w || !me) return;
+  var mine = myPicks[w.n] || {};
+  submitted[w.n] = {
+    at: Date.now(), who: me, code: code(w, mine),
+    n: w.games.filter(function(g){ return mine[g.id]; }).length
+  };
+  remember();
+  if(hide) $("#slipBox").hidden = true;
+  renderWeek();
+}
+$("#btnForm").addEventListener("click", function(){ recordSubmit(true); });
+
+window.addEventListener("beforeunload", function(e){
+  if(dirty){ e.preventDefault(); e.returnValue = ""; }
+});
+
+/* ---------- go ---------- */
+if(!IN_ARTIFACT){
+  $("#btnSave").textContent = "Save the updated site";
+  $("#pubHelp").textContent = "Saving builds a fresh index.html and downloads it. " +
+    "Drop that file on your Vercel project to put the new standings live — " +
+    "the web address never changes.";
+}
+renderStrip(); renderWeek(); renderStandings(); renderWall(); show("picks");
+$("#whoSel").setAttribute("data-empty", me ? "0" : "1");
+if(me) $("#whoHint").textContent = "picks and posts will go up under your name";
+setInterval(function(){ renderStrip(); renderWeek(); }, 60000);
+
+/* pull everyone's picks in on load, then keep them fresh */
+syncPicks();
+setInterval(syncPicks, 300000);
+</script>
+</body>
+</html>
