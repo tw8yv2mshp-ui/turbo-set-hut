@@ -136,7 +136,8 @@ h1 .hut::after{content:"";position:absolute;left:0;right:.06em;bottom:.08em;
 }
 
 /* ---------- submission confirmation ---------- */
-.confirm{display:flex;gap:14px;align-items:flex-start;margin-bottom:26px;
+/* sits between the board and the name picker so it is on screen at load */
+.confirm{display:flex;gap:14px;align-items:flex-start;margin:20px 0 0;
   border:1.5px solid var(--win);border-left:7px solid var(--win);
   background:color-mix(in srgb,var(--win) 20%,var(--surface));
   padding:15px 18px}
@@ -697,6 +698,8 @@ details[open] summary::before{content:"▾ "}
   </div>
 </header>
 
+<div class="confirm" id="subBanner" hidden></div>
+
 <div class="whobar">
   <span class="lbl"><label for="whoSel">You are</label></span>
   <select id="whoSel"></select>
@@ -726,7 +729,6 @@ details[open] summary::before{content:"▾ "}
     <h2 id="weekTitle">Week 1</h2>
   </div>
   <p class="lede" id="weekLede"></p>
-  <div class="confirm" id="subBanner" hidden></div>
   <div id="gameList"></div>
 </section>
 
@@ -880,13 +882,13 @@ details[open] summary::before{content:"▾ "}
     </div>
     <div class="spacer"></div>
     <button class="btn ghost sm" id="btnClear">Clear</button>
-    <button class="btn go" id="btnReview">Review</button>
+    <button class="btn go" id="btnReview">Review your picks</button>
   </div>
 </div>
 
 <script>
 /* Shown in the footer so you can tell at a glance which build is live. */
-var BUILD = "v27 · 7 Sep";
+var BUILD = "v28 · 7 Sep";
 
 var T = {
   ARI:["Arizona","Cardinals","#97233F"], ATL:["Atlanta","Falcons","#A71930"],
@@ -1195,24 +1197,24 @@ function renderBar(){
   if(!me){
     count.textContent = done + " of " + open.length;
     sub.textContent = "pick your name above first";
-    cta.textContent = "Review";
+    cta.textContent = "Review your picks";
   } else if(st && st.everSent && st.changes.length){
     bar.classList.add("changed");
     count.textContent = st.changes.length +
       (st.changes.length === 1 ? " change" : " changes");
     sub.textContent = "since the slip Ricardo has";
-    cta.textContent = "Review changes";
+    cta.textContent = "Review your changes";
   } else if(st && st.everSent){
     bar.classList.add("sent");
     count.textContent = "Submitted ✓";
     sub.textContent = done + " of " + open.length + " games in · " + pts + " points riding on it";
-    cta.textContent = "Review picks";
+    cta.textContent = "Review your picks";
   } else {
     count.textContent = done + " of " + open.length;
     sub.textContent = done === open.length
       ? pts + " points riding on it, " + me
       : "games picked · " + (open.length - done) + " to go";
-    cta.textContent = "Review";
+    cta.textContent = "Review your picks";
   }
 }
 
