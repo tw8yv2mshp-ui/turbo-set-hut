@@ -40,7 +40,8 @@
 *{box-sizing:border-box}
 body{background:var(--ground);color:var(--ink);font-family:var(--body);
   font-size:17px;line-height:1.55;-webkit-font-smoothing:antialiased;
-  padding:0 20px 140px}
+  padding:0 20px 44px}
+body.has-bar{padding-bottom:150px}
 .wrap{max-width:1040px;margin:0 auto}
 h1,h2,h3,.disp{font-family:var(--disp);text-wrap:balance;margin:0}
 .mono{font-family:var(--mono)}
@@ -706,7 +707,7 @@ details[open] summary::before{content:"▾ "}
 
 <script>
 /* Shown in the footer so you can tell at a glance which build is live. */
-var BUILD = "v6 · 7 Sep";
+var BUILD = "v7 · 7 Sep";
 
 var T = {
   ARI:["Arizona","Cardinals","#97233F"], ATL:["Atlanta","Falcons","#A71930"],
@@ -981,14 +982,21 @@ function gameRow(g, w, mine){
   return row;
 }
 
+function hideBar(){
+  $("#bar").hidden = true;
+  document.body.classList.remove("has-bar");
+}
 function renderBar(){
   var w = cur(), bar = $("#bar");
-  if(!w || $("#view-picks").hidden){ bar.hidden = true; return; }
+  if(!w || $("#view-picks").hidden){ hideBar(); return; }
   var mine = myPicks[w.n] || {};
   var open = w.games.filter(function(g){ return !locked(g); });
-  if(!open.length){ bar.hidden = true; return; }
-  bar.hidden = false;
+  if(!open.length){ hideBar(); return; }
   var done = open.filter(function(g){ return mine[g.id]; }).length;
+  /* nothing picked yet: an empty bar with a dead button is just clutter */
+  if(!done){ hideBar(); return; }
+  bar.hidden = false;
+  document.body.classList.add("has-bar");
   var pts = open.filter(function(g){ return mine[g.id]; })
     .reduce(function(a,g){ return a+g.pts; },0);
   $("#barCount").textContent = done + " of " + open.length;
