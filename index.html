@@ -171,9 +171,29 @@ h2{font-size:34px;font-weight:700;text-transform:uppercase;letter-spacing:-.01em
   text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tcity{font-family:var(--mono);font-size:10px;color:var(--muted);
   letter-spacing:.1em;text-transform:uppercase;margin-left:auto;flex:none}
-.team.picked{border-color:var(--ink);background:var(--surface-2)}
-.team.picked .tname{color:var(--ink)}
-.team.picked .dot{box-shadow:0 0 0 3px var(--surface),0 0 0 4.5px currentColor}
+/* your pick: filled in the team's own color, with a check you can't miss */
+.team{position:relative}
+.check{margin-left:auto;flex:none;width:21px;height:21px;border-radius:50%;
+  display:grid;place-items:center;font-size:13px;font-weight:700;line-height:1;
+  border:2px solid currentColor;opacity:0;transform:scale(.6);
+  transition:opacity .12s,transform .12s}
+.team.picked{border-width:2.5px}
+.team.picked .tcity{display:none}
+.team.picked .check{opacity:1;transform:scale(1)}
+.team.picked .dot{box-shadow:0 0 0 2px currentColor}
+@media (prefers-reduced-motion:reduce){.check{transition:none}}
+
+/* who took which side, once the game has kicked off */
+.by{grid-column:1/-1;display:flex;flex-direction:column;gap:4px;margin-top:4px;
+  padding-top:10px;border-top:1px dashed var(--line-soft);
+  font-family:var(--mono);font-size:11.5px;color:var(--muted)}
+.by .side{display:flex;gap:10px;align-items:baseline}
+.by .who{font-weight:600;letter-spacing:.09em;text-transform:uppercase;
+  min-width:78px;flex:none;color:var(--ink)}
+.by .names{overflow-wrap:anywhere}
+.by .side.right .who{color:var(--win)}
+.by .side.right .who::after{content:" ✓"}
+.by .nobody{font-style:italic;opacity:.7}
 .team.winner{border-color:var(--win);background:color-mix(in srgb,var(--win) 12%,transparent)}
 .team.correct{border-color:var(--win);border-width:2.5px}
 .team.wrong{border-color:var(--loss);border-width:2.5px}
@@ -668,6 +688,7 @@ details[open] summary::before{content:"▾ "}
 <div class="foot">
   <span>Turbo Set Hut &middot; Indacochea / Sobel / Sebso family pick 'em</span>
   <span id="footStamp"></span>
+  <span id="footBuild"></span>
 </div>
 </div>
 
@@ -684,6 +705,9 @@ details[open] summary::before{content:"▾ "}
 </div>
 
 <script>
+/* Shown in the footer so you can tell at a glance which build is live. */
+var BUILD = "v6 · 7 Sep";
+
 var T = {
   ARI:["Arizona","Cardinals","#97233F"], ATL:["Atlanta","Falcons","#A71930"],
   BAL:["Baltimore","Ravens","#241773"],  BUF:["Buffalo","Bills","#00338D"],
@@ -904,7 +928,14 @@ function gameRow(g, w, mine){
     b.appendChild(d);
     b.appendChild(el("span","tname", t[1]));
     b.appendChild(el("span","tcity", ab));
-    if(mine[g.id] === ab) b.classList.add("picked");
+    b.appendChild(el("span","check", "✓"));
+    if(mine[g.id] === ab){
+      /* fill with the team's own color; flip the text to whatever reads on it */
+      b.classList.add("picked");
+      b.style.background = t[2];
+      b.style.borderColor = t[2];
+      b.style.color = dark(t[2]) ? "#FFFFFF" : "#14170F";
+    }
     if(g.winner){
       if(g.winner === ab) b.classList.add("winner");
       if(mine[g.id] === ab) b.classList.add(mine[g.id] === g.winner ? "correct" : "wrong");
@@ -918,24 +949,34 @@ function gameRow(g, w, mine){
   });
   body.appendChild(mu);
 
-  var note = el("div","gnote");
   if(lk){
-    var tally = {}, n = 0;
-    Object.keys(w.picks||{}).forEach(function(p){
-      var v = w.picks[p][g.id]; if(!v) return; tally[v] = (tally[v]||0)+1; n++;
+    /* the game has kicked off, so it is fair to show who took which side */
+    var by = { }; by[g.away] = []; by[g.home] = [];
+    Object.keys(w.picks || {}).forEach(function(p){
+      var v = w.picks[p][g.id];
+      if(v && by[v]) by[v].push(p);
     });
-    if(n){
-      var parts = Object.keys(tally).map(function(k){ return tally[k]+" "+k; });
-      note.appendChild(el("span",null,"family: "));
-      var bb = el("b",null,parts.join(" · ")); note.appendChild(bb);
-    } else note.textContent = "no picks recorded";
-  } else if(mine[g.id]){
-    note.textContent = "locked in on your device";
+    var block = el("div","by");
+    [g.away, g.home].forEach(function(ab){
+      var side = el("div","side" + (g.winner === ab ? " right" : ""));
+      side.appendChild(el("span","who", T[ab] ? T[ab][1] : ab));
+      var names = by[ab];
+      side.appendChild(names.length
+        ? el("span","names", names.join(" · "))
+        : el("span","names nobody","nobody"));
+      block.appendChild(side);
+    });
+    body.appendChild(block);
   } else {
-    var t2 = until(new Date(g.kick).getTime());
-    note.textContent = t2 ? t2 + " to pick" : "";
+    var note = el("div","gnote");
+    if(mine[g.id]){
+      note.textContent = "your pick is saved on this device";
+    } else {
+      var t2 = until(new Date(g.kick).getTime());
+      note.textContent = t2 ? t2 + " to pick" : "";
+    }
+    body.appendChild(note);
   }
-  body.appendChild(note);
   row.appendChild(body);
   return row;
 }
@@ -1103,8 +1144,16 @@ var WALL = [];
 function applyRows(rows){
   if(rows.length < 2) return 0;
   var head = rows[0].map(function(h){ return h.trim().toLowerCase(); });
-  var iName = head.indexOf("your name"), iPicks = head.indexOf("picks"),
-      iWeek = head.indexOf("week"), iTime = head.indexOf("timestamp");
+  /* match on a fragment, not the whole header: the questions can be renamed
+     in the form ("Picks" -> "Picks or message") without breaking this */
+  function col(want){
+    for(var i = 0; i < head.length; i++){
+      if(head[i].indexOf(want) > -1) return i;
+    }
+    return -1;
+  }
+  var iName = col("name"), iPicks = col("picks"),
+      iWeek = col("week"), iTime = col("timestamp");
   if(iName < 0 || iPicks < 0) return 0;
   var n = 0, wall = [];
   /* rows arrive oldest-first, so a later slip merges over an earlier one —
@@ -1492,6 +1541,7 @@ if(!IN_ARTIFACT){
     "Drop that file on your Vercel project to put the new standings live — " +
     "the web address never changes.";
 }
+$("#footBuild").textContent = BUILD;
 renderStrip(); renderWeek(); renderStandings(); renderWall(); show("picks");
 $("#whoSel").setAttribute("data-empty", me ? "0" : "1");
 if(me) $("#whoHint").textContent = "picks and posts will go up under your name";
