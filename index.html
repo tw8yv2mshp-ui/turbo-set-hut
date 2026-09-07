@@ -129,6 +129,12 @@ h1 .hut::after{content:"";position:absolute;left:0;right:0;bottom:.1em;
 #whoSel:invalid,#whoSel[data-empty="1"]{border-color:var(--flag);color:var(--flag-ink)}
 .whobar .hint{font-family:var(--mono);font-size:11px;color:var(--muted);
   letter-spacing:.06em}
+.whobar .hint.error{color:var(--loss);font-weight:600}
+@media (prefers-reduced-motion:no-preference){
+  #whoSel.nudge{animation:nudge .4s ease-in-out}
+  @keyframes nudge{0%,100%{transform:none}25%{transform:translateX(-5px)}
+    75%{transform:translateX(5px)}}
+}
 
 /* ---------- the wall ---------- */
 .wall{padding:20px 0 22px;border-bottom:3px solid var(--ink)}
@@ -259,11 +265,19 @@ h2{font-size:36px;font-weight:700;letter-spacing:-.005em;line-height:1.05}
 
 /* ---------- pick slip drawer ---------- */
 .drawer-back{position:fixed;inset:0;background:rgba(11,20,29,.55);z-index:40}
+/* phones: a sheet up from the bottom, where the thumb is */
 .drawer{position:fixed;left:0;right:0;bottom:0;z-index:50;background:var(--surface);
   border-top:4px solid var(--board-gold);max-height:84vh;
   box-shadow:0 -18px 44px rgba(11,20,29,.3)}
 .drawer-in{max-width:1040px;margin:0 auto;padding:18px 20px 22px;
   display:flex;flex-direction:column;gap:14px;max-height:84vh}
+/* desktop: a side panel, so the slate stays readable beside it */
+@media(min-width:760px){
+  .drawer{left:auto;top:0;bottom:0;right:0;width:min(540px,94vw);max-height:none;
+    border-top:none;border-left:4px solid var(--board-gold);
+    box-shadow:-20px 0 48px rgba(11,20,29,.3)}
+  .drawer-in{height:100%;max-height:100vh;max-width:none;padding:24px 26px}
+}
 .drawer-head{display:flex;align-items:baseline;gap:14px}
 .drawer-head h2{font-size:28px}
 .drawer-x{margin-left:auto;font-family:var(--mono);font-size:17px;line-height:1;
@@ -273,7 +287,11 @@ h2{font-size:36px;font-weight:700;letter-spacing:-.005em;line-height:1.05}
 .drawer-foot{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
 @media (prefers-reduced-motion:no-preference){
   .drawer{animation:slipUp .2s ease-out}
-  @keyframes slipUp{from{transform:translateY(16px)}to{transform:none}}
+  @keyframes slipUp{from{transform:translateY(18px)}to{transform:none}}
+}
+@media (prefers-reduced-motion:no-preference) and (min-width:760px){
+  .drawer{animation:slipIn .22s ease-out}
+  @keyframes slipIn{from{transform:translateX(28px)}to{transform:none}}
 }
 
 /* ---------- submit bar ---------- */
@@ -787,13 +805,13 @@ details[open] summary::before{content:"▾ "}
     </div>
     <div class="spacer"></div>
     <button class="btn ghost sm" id="btnClear">Clear</button>
-    <button class="btn go" id="btnReview" disabled>Review</button>
+    <button class="btn go" id="btnReview">Review</button>
   </div>
 </div>
 
 <script>
 /* Shown in the footer so you can tell at a glance which build is live. */
-var BUILD = "v15 · 7 Sep";
+var BUILD = "v18 · 7 Sep";
 
 var T = {
   ARI:["Arizona","Cardinals","#97233F"], ATL:["Atlanta","Falcons","#A71930"],
@@ -1093,24 +1111,24 @@ function renderBar(){
   if(!me){
     count.textContent = done + " of " + open.length;
     sub.textContent = "pick your name above first";
-    cta.disabled = true; cta.textContent = "Review";
+    cta.textContent = "Review";
   } else if(st && st.everSent && st.changes.length){
     bar.classList.add("changed");
     count.textContent = st.changes.length +
       (st.changes.length === 1 ? " change" : " changes");
     sub.textContent = "since the slip Ricardo has";
-    cta.disabled = false; cta.textContent = "Review changes";
+    cta.textContent = "Review changes";
   } else if(st && st.everSent){
     bar.classList.add("sent");
     count.textContent = "Submitted ✓";
     sub.textContent = done + " of " + open.length + " games in · " + pts + " points riding on it";
-    cta.disabled = false; cta.textContent = "Review picks";
+    cta.textContent = "Review picks";
   } else {
     count.textContent = done + " of " + open.length;
     sub.textContent = done === open.length
       ? pts + " points riding on it, " + me
       : "games picked · " + (open.length - done) + " to go";
-    cta.disabled = done === 0; cta.textContent = "Review";
+    cta.textContent = "Review";
   }
 }
 
@@ -1388,9 +1406,16 @@ function parseCSV(txt){
 }
 
 var WALL = [];
+var LATE = 0;   /* picks ignored because the slip landed after kickoff */
+
+function gameById(w, id){
+  for(var i = 0; i < w.games.length; i++) if(w.games[i].id === id) return w.games[i];
+  return null;
+}
 
 function applyRows(rows){
   if(rows.length < 2) return 0;
+  var late = 0;
   var head = rows[0].map(function(h){ return h.trim().toLowerCase(); });
   /* match on a fragment, not the whole header: the questions can be renamed
      in the form ("Picks" -> "Picks or message") without breaking this */
@@ -1423,10 +1448,21 @@ function applyRows(rows){
       continue;
     }
     var w = wk(+m[1]); if(!w) continue;
+
+    /* A pick only counts if the slip was sent before that game kicked off —
+       Ricardo's rule, enforced on the timestamp rather than trusted to the UI.
+       A slip that arrives late still scores every game that had not started. */
+    var at = (iTime > -1 && row[iTime]) ? new Date(row[iTime]) : null;
+    if(at && isNaN(at.getTime())) at = null;
+
     var picks = {};
     m[2].split("|").forEach(function(p){
       var kv = p.split("=");
-      if(T[kv[1]]) picks["w" + w.n + "-" + kv[0]] = kv[1];
+      if(!T[kv[1]]) return;
+      var gid = "w" + w.n + "-" + kv[0];
+      var g = gameById(w, gid);
+      if(g && at && at.getTime() >= new Date(g.kick).getTime()){ late++; return; }
+      picks[gid] = kv[1];
     });
     w.picks = w.picks || {};
     w.picks[who] = Object.assign(w.picks[who] || {}, picks);
@@ -1437,6 +1473,7 @@ function applyRows(rows){
     n++;
   }
   WALL = wall.reverse();   /* newest first */
+  LATE = late;
   return n;
 }
 
@@ -1540,7 +1577,9 @@ async function syncPicks(){
     var res = await fetch(S.picksCsv, { cache:"no-store" });
     if(!res.ok) throw new Error("HTTP " + res.status);
     var n = applyRows(parseCSV(await res.text()));
-    syncNote(n ? n + " pick slips read from the spreadsheet"
+    syncNote(n ? n + " pick slips read from the spreadsheet" +
+                 (LATE ? " · " + LATE + " pick" + (LATE === 1 ? "" : "s") +
+                         " ignored, sent after kickoff" : "")
                : "Spreadsheet reached — no picks submitted yet");
     seedFromServer();
     renderStandings(); renderWeek(); renderStrip(); renderWall();
@@ -1793,6 +1832,8 @@ $("#btnSave").addEventListener("click", async function(){
 $("#whoSel").addEventListener("change", function(){
   me = this.value || null; remember();
   this.setAttribute("data-empty", me ? "0" : "1");
+  this.classList.remove("nudge");
+  $("#whoHint").classList.remove("error");
   /* bring back whatever they already sent for this week */
   var n = seedFromServer();
   $("#whoHint").textContent = !me
@@ -1801,7 +1842,22 @@ $("#whoSel").addEventListener("change", function(){
         : "picks and posts will go up under your name";
   renderWeek(); renderStandings(); renderWall();
 });
-$("#btnReview").addEventListener("click", function(){ showSlip(); });
+/* Review is always clickable — a dead button tells you nothing. If the name is
+   missing, say so where the name is chosen and take them to it. */
+function needName(){
+  var hint = $("#whoHint"), sel = $("#whoSel");
+  hint.textContent = "Select your name to continue";
+  hint.classList.add("error");
+  sel.setAttribute("data-empty", "1");
+  sel.classList.remove("nudge");
+  document.querySelector(".whobar")
+    .scrollIntoView({ behavior:"smooth", block:"center" });
+  setTimeout(function(){ void sel.offsetWidth; sel.classList.add("nudge"); sel.focus(); }, 300);
+}
+$("#btnReview").addEventListener("click", function(){
+  if(!me){ needName(); return; }
+  showSlip();
+});
 $("#btnEdit").addEventListener("click", closeSlip);
 $("#btnClear").addEventListener("click", function(){
   var w = cur(); if(!w) return;
