@@ -542,6 +542,9 @@ details[open] summary::before{content:"▾ "}
     <textarea id="wallText" rows="2" maxlength="600" placeholder="Talk your talk. Everyone in the league sees this."></textarea>
     <button class="btn go" id="btnPost">Post</button>
   </div>
+  <p class="lede" id="wallFallback" hidden style="font-size:14.5px;margin:0 0 14px">
+    That did not go through from here.
+    <a id="wallFormLink" target="_blank" rel="noopener">Open the form instead</a>.</p>
   <div id="wallList"></div>
 </section>
 
@@ -564,7 +567,8 @@ details[open] summary::before{content:"▾ "}
     <div class="window-head"><span class="name">Your pick slip</span><span class="rule"></span></div>
     <div class="slip" id="slipText"></div>
     <div class="row" style="margin-top:12px">
-      <a class="btn go" id="btnForm" target="_blank" rel="noopener">Submit on the form</a>
+      <button class="btn go" id="btnSend">Send my picks</button>
+      <a class="btn ghost sm" id="btnForm" target="_blank" rel="noopener" hidden>Open the form instead</a>
       <button class="btn ghost sm" id="btnCopy">Copy pick slip</button>
       <button class="btn ghost sm" id="btnEdit">Keep editing</button>
     </div>
@@ -707,7 +711,7 @@ details[open] summary::before{content:"▾ "}
 
 <script>
 /* Shown in the footer so you can tell at a glance which build is live. */
-var BUILD = "v8 · 7 Sep";
+var BUILD = "v9 · 7 Sep";
 
 var T = {
   ARI:["Arizona","Cardinals","#97233F"], ATL:["Atlanta","Falcons","#A71930"],
@@ -1079,16 +1083,40 @@ function formURL(){
   if(f.ePicks) u += "&" + f.ePicks + "=" + encodeURIComponent(slip());
   return u;
 }
+/* Submitting without ever showing Google. The form accepts a plain POST to
+   /formResponse; the browser cannot read the reply (no-cors), so this can
+   confirm the request left, never that Google stored it — which is why the
+   "open the form" fallback stays on screen and the wall/standings are the
+   real proof. Only possible now that the form collects no email: a required
+   field would make Google reject every one of these silently. */
+function formPostURL(){
+  if(!S.form.action) return null;
+  return S.form.action.replace(/\/viewform.*$/, "/formResponse");
+}
+async function sendToForm(week, text){
+  var url = formPostURL();
+  if(!url || !S.form.eName || !S.form.eWeek || !S.form.ePicks){
+    throw new Error("form not connected");
+  }
+  var fd = new FormData();
+  fd.append(S.form.eName,  me);
+  fd.append(S.form.eWeek,  week);
+  fd.append(S.form.ePicks, text);
+  fd.append("fvv", "1");
+  fd.append("pageHistory", "0");
+  await fetch(url, { method:"POST", mode:"no-cors", body:fd });
+}
+
 function showSlip(){
   var w = cur();
   $("#slipText").textContent = slip();
   $("#slipBox").hidden = false;
   var url = formURL();
-  $("#btnForm").hidden = !url;
   if(url) $("#btnForm").href = url;
+  $("#btnSend").hidden = !url;
   $("#slipHelp").textContent = url
-    ? "The form opens with your name, the week and every pick already filled in. Press Submit there and you are done — Ricardo gets the timestamp."
-    : "The commissioner has not connected the league's Google Form yet. Copy your slip and send it to Ricardo the usual way; once the form is connected this button will fill it in for you.";
+    ? "Your picks go straight to Ricardo's spreadsheet — no form to fill in. You can change anything that has not kicked off and send again; the last one before kickoff counts."
+    : "The league's form is not connected, so copy your slip and send it to Ricardo the usual way.";
   $("#slipBox").scrollIntoView({ behavior:"smooth", block:"nearest" });
 }
 
@@ -1233,19 +1261,28 @@ function renderWall(){
   }
 }
 
-$("#btnPost").addEventListener("click", function(){
-  var txt = $("#wallText").value.trim();
+$("#btnPost").addEventListener("click", async function(){
+  var txt = $("#wallText").value.trim(), b = this;
   if(!me){ $("#whoHint").textContent = "choose your name first"; $("#whoSel").focus(); return; }
-  if(!txt) { $("#wallText").focus(); return; }
-  var f = S.form;
-  if(!f.action){ $("#whoHint").textContent = "the league form is not connected yet"; return; }
-  var u = f.action + "?usp=pp_url" +
-    "&" + f.eName  + "=" + encodeURIComponent(me) +
-    "&" + f.eWeek  + "=WALL" +
-    "&" + f.ePicks + "=" + encodeURIComponent(txt);
-  window.open(u, "_blank", "noopener");
-  $("#wallText").value = "";
-  $("#whoHint").textContent = "press Submit on the form and your post goes up";
+  if(!txt){ $("#wallText").focus(); return; }
+  b.disabled = true; b.textContent = "Posting…";
+  try {
+    await sendToForm("WALL", txt);
+    $("#wallText").value = "";
+    $("#whoHint").textContent = "posted — it shows on the wall within a few minutes";
+    setTimeout(syncPicks, 10000);
+  } catch(e){
+    var f = S.form;
+    if(f.action){
+      $("#wallFormLink").href = f.action + "?usp=pp_url" +
+        "&" + f.eName  + "=" + encodeURIComponent(me) +
+        "&" + f.eWeek  + "=WALL" +
+        "&" + f.ePicks + "=" + encodeURIComponent(txt);
+    }
+    $("#whoHint").textContent = "could not post — use the form link below";
+    $("#wallFallback").hidden = false;
+  }
+  b.disabled = false; b.textContent = "Post";
 });
 
 function syncNote(msg){
@@ -1537,6 +1574,21 @@ function recordSubmit(hide){
   renderWeek();
 }
 $("#btnForm").addEventListener("click", function(){ recordSubmit(true); });
+
+$("#btnSend").addEventListener("click", async function(){
+  var w = cur(), b = this;
+  if(!w || !me) return;
+  b.disabled = true; b.textContent = "Sending…";
+  try {
+    await sendToForm(String(w.n), slip());
+    recordSubmit(true);
+    setTimeout(syncPicks, 10000);
+  } catch(e){
+    $("#slipHelp").textContent = "That did not go through from here — use “Open the form instead”, which already has everything filled in.";
+    $("#btnForm").hidden = false;
+  }
+  b.disabled = false; b.textContent = "Send my picks";
+});
 
 window.addEventListener("beforeunload", function(e){
   if(dirty){ e.preventDefault(); e.returnValue = ""; }
