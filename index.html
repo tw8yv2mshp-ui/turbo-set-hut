@@ -707,7 +707,7 @@ details[open] summary::before{content:"▾ "}
 
 <script>
 /* Shown in the footer so you can tell at a glance which build is live. */
-var BUILD = "v7 · 7 Sep";
+var BUILD = "v8 · 7 Sep";
 
 var T = {
   ARI:["Arizona","Cardinals","#97233F"], ATL:["Atlanta","Falcons","#A71930"],
@@ -1172,16 +1172,16 @@ function applyRows(rows){
     if(S.players.indexOf(who) < 0) continue;
     var body = String(row[iPicks] || "");
 
-    /* a wall post is the same form with WALL in the week box — the pick
-       parser below ignores it, so posts and picks share one spreadsheet */
-    if(iWeek > -1 && String(row[iWeek] || "").trim().toUpperCase() === "WALL"){
+    /* What makes a row picks is the code the site writes into it, nothing
+       else. Anything without that code is a message for the wall — whatever
+       ended up in the Week box. Keying off Week meant one stray keystroke
+       silently dropped a post. */
+    var m = body.match(/W(\d+)\|([0-9]+=[A-Z]{2,3}(?:\|[0-9]+=[A-Z]{2,3})*)/);
+    if(!m){
       if(body.trim()) wall.push({ who:who, at:(iTime > -1 ? row[iTime] : ""),
         text:body.trim() });
       continue;
     }
-
-    var m = body.match(/W(\d+)\|([0-9]+=[A-Z]{2,3}(?:\|[0-9]+=[A-Z]{2,3})*)/);
-    if(!m) continue;
     var w = wk(+m[1]); if(!w) continue;
     var picks = {};
     m[2].split("|").forEach(function(p){
