@@ -399,8 +399,6 @@ h2{font-size:36px;font-weight:700;letter-spacing:-.005em;line-height:1.05}
 .bar .sub{font-family:var(--mono);font-size:11px;color:var(--muted);
   letter-spacing:.06em;margin-top:3px}
 .bar .spacer{flex:1}
-.bar.sent{border-top-color:var(--win)}
-.bar.sent .count{color:var(--win)}
 .bar.changed{border-top-color:var(--flag)}
 .bar.changed .count{color:var(--flag-ink)}
 .btn{display:inline-block;text-decoration:none;font-family:var(--disp);font-size:19px;font-weight:700;text-transform:uppercase;
@@ -940,7 +938,7 @@ details[open] summary::before{content:"▾ "}
 
 <script>
 /* Shown in the footer so you can tell at a glance which build is live. */
-var BUILD = "v30 · 7 Sep";
+var BUILD = "v31 · 7 Sep";
 
 var T = {
   ARI:["Arizona","Cardinals","#97233F"], ATL:["Atlanta","Falcons","#A71930"],
@@ -1236,15 +1234,20 @@ function renderBar(){
   if(!open.length){ hideBar(); return; }
   var done = open.filter(function(g){ return mine[g.id]; }).length;
   var st = pickState();
-  /* nothing picked and nothing sent: an empty bar with a dead button is clutter */
-  if(!done && !(st && st.everSent)){ hideBar(); return; }
+
+  /* Sent and untouched since: the banner at the top already says so, so the bar
+     has nothing left to offer. It comes back the moment a pick changes. */
+  if(st && st.everSent && !st.changes.length){ hideBar(); return; }
+  /* nothing picked yet: an empty bar with a dead button is clutter */
+  if(!done){ hideBar(); return; }
+
   bar.hidden = false;
   document.body.classList.add("has-bar");
 
   var pts = open.filter(function(g){ return mine[g.id]; })
     .reduce(function(a,g){ return a + g.pts; }, 0);
   var count = $("#barCount"), sub = $("#barSub"), cta = $("#btnReview");
-  bar.classList.remove("sent","changed");
+  bar.classList.remove("changed");
 
   if(!me){
     count.textContent = done + " of " + open.length;
@@ -1254,13 +1257,8 @@ function renderBar(){
     bar.classList.add("changed");
     count.textContent = st.changes.length +
       (st.changes.length === 1 ? " change" : " changes");
-    sub.textContent = "since the slip Ricardo has";
-    cta.textContent = "Review your changes";
-  } else if(st && st.everSent){
-    bar.classList.add("sent");
-    count.textContent = "Submitted ✓";
-    sub.textContent = done + " of " + open.length + " games in · " + pts + " points riding on it";
-    cta.textContent = "Review your picks";
+    sub.textContent = "not sent yet — Ricardo still has your old picks";
+    cta.textContent = "Save and review changes";
   } else {
     count.textContent = done + " of " + open.length;
     sub.textContent = done === open.length
