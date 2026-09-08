@@ -940,7 +940,7 @@ details[open] summary::before{content:"▾ "}
 
 <script>
 /* Shown in the footer so you can tell at a glance which build is live. */
-var BUILD = "v29 · 7 Sep";
+var BUILD = "v30 · 7 Sep";
 
 var T = {
   ARI:["Arizona","Cardinals","#97233F"], ATL:["Atlanta","Falcons","#A71930"],
@@ -1396,7 +1396,10 @@ function pickState(){
   };
 }
 
-function slip(){
+/* withCode: the machine-readable line the site reads picks back from. It rides
+   along with anything sent or copied, but never appears in the drawer — that
+   is for reading. */
+function slip(withCode){
   var w = cur(), mine = myPicks[w.n] || {};
   var lines = ["TURBO SET HUT — WEEK " + w.n, me, ""];
   var pts = 0;
@@ -1428,8 +1431,10 @@ function slip(){
     });
   }
 
-  lines.push("");
-  lines.push("CODE " + code(w, mine));
+  if(withCode){
+    lines.push("");
+    lines.push("CODE " + code(w, mine));
+  }
   return lines.join("\n");
 }
 function formURL(){
@@ -1438,7 +1443,7 @@ function formURL(){
   var u = f.action + (f.action.indexOf("?") > -1 ? "&" : "?") + "usp=pp_url";
   if(f.eName)  u += "&" + f.eName + "=" + encodeURIComponent(me);
   if(f.eWeek)  u += "&" + f.eWeek + "=" + encodeURIComponent(String(w.n));
-  if(f.ePicks) u += "&" + f.ePicks + "=" + encodeURIComponent(slip());
+  if(f.ePicks) u += "&" + f.ePicks + "=" + encodeURIComponent(slip(true));
   return u;
 }
 /* Submitting without ever showing Google. The form accepts a plain POST to
@@ -1524,7 +1529,7 @@ function showSlip(){
     : "Your Week " + (w ? w.n : "") + " slip";
   $("#btnSend").textContent = st && st.everSent && st.changes.length
     ? "Send changes" : "Send my picks";
-  $("#slipText").textContent = slip();
+  $("#slipText").textContent = slip(false);
   $("#drawerBack").hidden = false;
   $("#slipBox").hidden = false;
   $("#btnSend").focus();
@@ -2176,7 +2181,7 @@ $("#btnClear").addEventListener("click", function(){
 });
 $("#btnCopy").addEventListener("click", async function(){
   var b = this;
-  try { await navigator.clipboard.writeText(slip()); b.textContent = "Copied"; }
+  try { await navigator.clipboard.writeText(slip(false)); b.textContent = "Copied"; }
   catch(e){
     var r = document.createRange(); r.selectNodeContents($("#slipText"));
     var s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
@@ -2185,7 +2190,7 @@ $("#btnCopy").addEventListener("click", async function(){
   /* with no form connected, copying the slip IS the handoff, so it counts as
      submitting; keep the slip on screen so they can still paste it */
   if(!formURL()) recordSubmit(false);
-  setTimeout(function(){ b.textContent = "Copy pick slip"; }, 2200);
+  setTimeout(function(){ b.textContent = "Copy"; }, 2200);
 });
 function recordSubmit(hide){
   var w = cur(); if(!w || !me) return;
@@ -2205,7 +2210,7 @@ $("#btnSend").addEventListener("click", async function(){
   if(!w || !me) return;
   b.disabled = true; b.textContent = "Sending…";
   try {
-    await sendToForm(String(w.n), slip());
+    await sendToForm(String(w.n), slip(true));
     recordSubmit(true);
     setTimeout(syncPicks, 10000);
   } catch(e){
