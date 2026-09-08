@@ -247,10 +247,14 @@ h1 .hut::after{content:"";position:absolute;left:0;right:.06em;bottom:.08em;
   border-bottom:1px solid var(--flag);margin-left:8px}
 .post.pending{opacity:.62}
 .post.pending .when{color:var(--flag)}
-.wall-head .refresh{margin-left:auto;font-family:var(--mono);font-size:10px;
+.wall-tools{margin-left:auto;display:flex;gap:15px;flex:none}
+.wall-head .refresh{font-family:var(--mono);font-size:10px;
   font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);
-  border-bottom:1px solid var(--line)}
+  border-bottom:1px solid var(--line);white-space:nowrap}
 .wall-head .refresh:hover{color:var(--ink);border-bottom-color:var(--ink)}
+/* expanded: give the wall the screen when someone wants to sit and read it */
+.wall.big .posts{max-height:min(68vh,640px)}
+.wall.big .refresh#btnWallSize{color:var(--flag-ink);border-bottom-color:var(--flag)}
 .wall-empty{font-size:15.5px;color:var(--muted);border-left:4px solid var(--line);
   padding:10px 0 10px 14px;max-width:62ch}
 
@@ -356,6 +360,23 @@ h2{font-size:36px;font-weight:700;letter-spacing:-.005em;line-height:1.05}
   .at{display:none}
   .gbody{grid-template-columns:1fr}
   .gnote{text-align:left}
+}
+
+/* ---------- toast ---------- */
+.toast{position:fixed;left:50%;transform:translateX(-50%);top:62px;z-index:60;
+  width:min(560px,92vw);display:flex;gap:13px;align-items:flex-start;
+  background:var(--board);color:var(--board-ink);
+  border-left:7px solid var(--flag);padding:14px 16px;font-size:15px;
+  line-height:1.45;box-shadow:0 12px 34px rgba(11,20,29,.38)}
+.toast b{display:block;font-family:var(--disp);font-size:19px;font-weight:700;
+  margin-bottom:2px;color:var(--board-gold)}
+.toast .x{margin-left:auto;flex:none;font-family:var(--mono);font-size:15px;
+  color:var(--board-muted);padding:0 2px}
+.toast .x:hover{color:var(--board-ink)}
+@media (prefers-reduced-motion:no-preference){
+  .toast{animation:toastIn .18s ease-out}
+  @keyframes toastIn{from{transform:translate(-50%,-8px);opacity:0}
+    to{transform:translate(-50%,0);opacity:1}}
 }
 
 /* ---------- pick slip drawer ---------- */
@@ -747,7 +768,10 @@ details[open] summary::before{content:"▾ "}
   <div class="wall-head">
     <h2>The Wall</h2>
     <span class="n" id="wallCount"></span>
-    <button class="refresh" id="btnWallRefresh">Refresh</button>
+    <span class="wall-tools">
+      <button class="refresh" id="btnWallSize">Expand</button>
+      <button class="refresh" id="btnWallRefresh">Refresh</button>
+    </span>
   </div>
   <p class="replytag" id="replyTag" hidden>Replying to <b id="replyWho"></b>
     <button id="btnCancelReply">cancel</button></p>
@@ -894,6 +918,8 @@ details[open] summary::before{content:"▾ "}
 </div>
 </div>
 
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
 <div class="drawer-back" id="drawerBack" hidden></div>
 <aside class="drawer" id="allPicks" role="dialog" aria-modal="true"
        aria-labelledby="allTitle" hidden>
@@ -938,7 +964,7 @@ details[open] summary::before{content:"▾ "}
 
 <script>
 /* Shown in the footer so you can tell at a glance which build is live. */
-var BUILD = "v31 · 7 Sep";
+var BUILD = "v34 · 7 Sep";
 
 var T = {
   ARI:["Arizona","Cardinals","#97233F"], ATL:["Atlanta","Falcons","#A71930"],
@@ -1004,9 +1030,23 @@ function slotName(g){
   if(etDay===5) return "Friday";
   return "Tuesday";
 }
+/* Kickoffs are stored as absolute times with the Eastern offset baked in, so
+   every device renders them in its own zone automatically — a cousin in
+   California sees Pacific. The zone name is shown because "1:00 PM" alone is
+   ambiguous when the deadline is the whole point. */
 function fmtKick(g){
   return new Date(g.kick).toLocaleString([], { weekday:"short", month:"numeric",
-    day:"numeric", hour:"numeric", minute:"2-digit" });
+    day:"numeric", hour:"numeric", minute:"2-digit", timeZoneName:"short" });
+}
+function tzName(){
+  try {
+    var parts = new Intl.DateTimeFormat([], { timeZoneName:"short" })
+      .formatToParts(new Date());
+    for(var i = 0; i < parts.length; i++){
+      if(parts[i].type === "timeZoneName") return parts[i].value;
+    }
+  } catch(e){}
+  return "";
 }
 function autoPts(iso){
   var etH = +iso.slice(11,13), etDay = new Date(iso.slice(0,10)+"T12:00:00Z").getUTCDay();
@@ -1108,9 +1148,11 @@ function renderWeek(){
 
   var total = w.games.reduce(function(a,g){ return a+g.pts; },0);
   var openN = w.games.filter(function(g){ return !locked(g); }).length;
+  var tz = tzName();
   $("#weekLede").textContent = w.games.length + " games, " + total +
     " points on the board — " + (total + PERFECT_BONUS) +
-    " if you run the table. " +
+    " if you run the table. " + (tz ? "Kickoffs are shown in " + tz +
+      ", your device's time zone. " : "") +
     (openN === 0 ? "Every game has kicked off — this week is closed."
       : openN === w.games.length ? "Tap a team to pick it. Each game locks at its own kickoff."
       : openN + " still open. The rest have kicked off and are locked.");
@@ -1290,7 +1332,7 @@ function renderRoster(){
       var at = (w.subAt || {})[p], d = at ? new Date(at) : null;
       c.title = p + " — " + n + " of " + w.games.length + " games" +
         (d && !isNaN(d) ? ", sent " + d.toLocaleString([], { weekday:"short",
-          hour:"numeric", minute:"2-digit" }) : "");
+          hour:"numeric", minute:"2-digit", timeZoneName:"short" }) : "");
     } else {
       c.title = p + " has not submitted for week " + w.n + " yet";
     }
@@ -1572,7 +1614,7 @@ function renderConfirm(){
     var raw = (w.subAt || {})[me], d = raw ? new Date(raw) : null;
     var when = d && !isNaN(d)
       ? d.toLocaleString([], { weekday:"short", month:"numeric", day:"numeric",
-          hour:"numeric", minute:"2-digit" })
+          hour:"numeric", minute:"2-digit", timeZoneName:"short" })
       : null;
     var differs = w.games.some(function(g){
       return mine[g.id] && onFile[g.id] !== mine[g.id];
@@ -1600,7 +1642,7 @@ function renderConfirm(){
 
   if(!s || typeof s !== "object"){ b.hidden = true; return; }
   var when2 = new Date(s.at).toLocaleString([], { weekday:"short",
-    hour:"numeric", minute:"2-digit" });
+    hour:"numeric", minute:"2-digit", timeZoneName:"short" });
   b.hidden = false;
   b.className = "confirm";
   b.textContent = "";
@@ -2054,6 +2096,20 @@ $("#btnPrefill").addEventListener("click", function(){
     mark();
   } catch(e){ notice("Not a link", "Paste the whole pre-filled URL, starting with https://"); }
 });
+/* the expanded/collapsed choice is a per-device preference, so it sticks */
+var wallBig = false;
+try { wallBig = localStorage.getItem("tsh.wallbig") === "1"; } catch(e){}
+function applyWallSize(){
+  $("#wall").classList.toggle("big", wallBig);
+  $("#btnWallSize").textContent = wallBig ? "Collapse" : "Expand";
+}
+$("#btnWallSize").addEventListener("click", function(){
+  wallBig = !wallBig;
+  try { localStorage.setItem("tsh.wallbig", wallBig ? "1" : "0"); } catch(e){}
+  applyWallSize();
+});
+applyWallSize();
+
 $("#btnWallRefresh").addEventListener("click", async function(){
   var b = this; b.textContent = "Checking…";
   await syncPicks();
@@ -2141,8 +2197,44 @@ $("#btnSave").addEventListener("click", async function(){
 });
 
 /* ---------- picks tab wiring ---------- */
+/* ---------- toast ---------- */
+var toastTimer = null;
+function toast(title, msg){
+  var t = $("#toast");
+  t.textContent = "";
+  var box = el("div");
+  box.appendChild(el("b", null, title));
+  box.appendChild(el("span", null, msg));
+  t.appendChild(box);
+  var x = el("button","x","✕");
+  x.setAttribute("aria-label","Dismiss");
+  x.addEventListener("click", function(){ t.hidden = true; });
+  t.appendChild(x);
+  t.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function(){ t.hidden = true; }, 9000);
+}
+
+/* The first name chosen on a device is treated as whose device it is. Picking
+   somebody else's name is legitimate on a shared laptop, so this warns rather
+   than blocks — it cannot actually stop anyone, and pretending otherwise would
+   be worse than saying so. */
+var owner = null;
+try { owner = localStorage.getItem("tsh.owner") || null; } catch(e){}
+
 $("#whoSel").addEventListener("change", function(){
-  me = this.value || null; remember();
+  var picked = this.value || null;
+  if(picked){
+    if(!owner){
+      owner = picked;
+      try { localStorage.setItem("tsh.owner", owner); } catch(e){}
+    } else if(picked !== owner){
+      toast("That is " + picked + "'s name",
+        "Only send picks as yourself. " + picked +
+        " will see anything submitted under their name, and so will everyone else — every slip is timestamped and shown on the board.");
+    }
+  }
+  me = picked; remember();
   this.setAttribute("data-empty", me ? "0" : "1");
   this.classList.remove("nudge");
   $("#whoHint").classList.remove("error");
