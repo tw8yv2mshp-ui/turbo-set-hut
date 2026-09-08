@@ -176,6 +176,27 @@ h1 .hut::after{content:"";position:absolute;left:0;right:.06em;bottom:.08em;
 .chip.in::before{content:"✓ "}
 .chip.you{border-width:2.5px;border-color:var(--ink);color:var(--ink)}
 .chip.in.you{border-color:var(--win);color:var(--win)}
+.seeall{font-family:var(--mono);font-size:10px;font-weight:600;
+  letter-spacing:.12em;text-transform:uppercase;color:var(--flag-ink);
+  border-bottom:1px solid var(--flag);margin-left:4px;white-space:nowrap}
+.seeall:hover{color:var(--ink);border-bottom-color:var(--ink)}
+
+/* everyone's picks, as a grid of games down and players across */
+.allwrap{overflow:auto;border:1px solid var(--line);flex:1;min-height:0}
+.allgrid{border-collapse:collapse;width:100%;font-family:var(--mono);font-size:12px}
+.allgrid th,.allgrid td{padding:7px 9px;border-bottom:1px solid var(--line-soft);
+  border-right:1px solid var(--line-soft);white-space:nowrap;text-align:center}
+.allgrid thead th{position:sticky;top:0;background:var(--surface-2);
+  font-family:var(--disp);font-size:15px;font-weight:700;letter-spacing:.01em;
+  border-bottom:2px solid var(--ink);z-index:1}
+.allgrid th.g,.allgrid td.g{text-align:left;position:sticky;left:0;
+  background:var(--surface);font-family:var(--disp);font-size:15px;
+  font-weight:700;z-index:1}
+.allgrid thead th.g{z-index:2;background:var(--surface-2)}
+.allgrid td.hit{color:var(--win);font-weight:600}
+.allgrid td.miss{color:var(--loss)}
+.allgrid td.masked{color:var(--muted);opacity:.55}
+.allgrid tr.tri td.g{color:var(--flag-ink)}
 @media (prefers-reduced-motion:no-preference){
   #whoSel.nudge{animation:nudge .4s ease-in-out}
   @keyframes nudge{0%,100%{transform:none}25%{transform:translateX(-5px)}
@@ -207,6 +228,23 @@ h1 .hut::after{content:"";position:absolute;left:0;right:.06em;bottom:.08em;
 .post .when{font-family:var(--mono);font-size:10px;color:var(--muted);
   letter-spacing:.06em;white-space:nowrap;flex:none;align-self:center}
 .post.mine{background:var(--surface-2)}
+.post.reply{padding-left:38px;background:color-mix(in srgb,var(--line-soft) 40%,var(--surface))}
+.post.reply .avatar{width:15px;height:15px;font-size:9px}
+.post.reply .from{font-size:15px}
+.post.reply .line{font-size:14px}
+.post.reply::before{content:"↳";position:absolute;left:16px;color:var(--muted);
+  font-size:13px}
+.post{position:relative}
+.replybtn{font-family:var(--mono);font-size:10px;font-weight:600;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--muted);
+  flex:none;padding:2px 6px;opacity:0}
+.post:hover .replybtn,.replybtn:focus{opacity:1}
+.replybtn:hover{color:var(--flag-ink)}
+.replytag{font-family:var(--mono);font-size:11px;color:var(--muted);
+  margin:0 0 8px;letter-spacing:.04em}
+.replytag b{color:var(--ink)}
+.replytag button{font-family:var(--mono);font-size:11px;color:var(--flag-ink);
+  border-bottom:1px solid var(--flag);margin-left:8px}
 .post.pending{opacity:.62}
 .post.pending .when{color:var(--flag)}
 .wall-head .refresh{margin-left:auto;font-family:var(--mono);font-size:10px;
@@ -713,6 +751,8 @@ details[open] summary::before{content:"▾ "}
     <span class="n" id="wallCount"></span>
     <button class="refresh" id="btnWallRefresh">Refresh</button>
   </div>
+  <p class="replytag" id="replyTag" hidden>Replying to <b id="replyWho"></b>
+    <button id="btnCancelReply">cancel</button></p>
   <div class="wall-compose">
     <textarea id="wallText" rows="2" maxlength="600" placeholder="Talk your talk. Everyone in the league sees this."></textarea>
     <button class="btn go" id="btnPost">Post</button>
@@ -857,6 +897,18 @@ details[open] summary::before{content:"▾ "}
 </div>
 
 <div class="drawer-back" id="drawerBack" hidden></div>
+<aside class="drawer" id="allPicks" role="dialog" aria-modal="true"
+       aria-labelledby="allTitle" hidden>
+  <div class="drawer-in">
+    <div class="drawer-head">
+      <h2 id="allTitle">Everyone's picks</h2>
+      <button class="drawer-x" id="btnAllClose" aria-label="Close">&#10005;</button>
+    </div>
+    <p class="lede" style="margin:0;font-size:14.5px" id="allNote"></p>
+    <div class="allwrap"><table class="allgrid" id="allGrid"></table></div>
+  </div>
+</aside>
+
 <aside class="drawer" id="slipBox" role="dialog" aria-modal="true"
        aria-labelledby="slipTitle" hidden>
   <div class="drawer-in">
@@ -888,7 +940,7 @@ details[open] summary::before{content:"▾ "}
 
 <script>
 /* Shown in the footer so you can tell at a glance which build is live. */
-var BUILD = "v28 · 7 Sep";
+var BUILD = "v29 · 7 Sep";
 
 var T = {
   ARI:["Arizona","Cardinals","#97233F"], ATL:["Atlanta","Falcons","#A71930"],
@@ -1246,6 +1298,15 @@ function renderRoster(){
     }
     host.appendChild(c);
   });
+
+  /* rebuilt here rather than sitting in the markup, since this host is cleared
+     on every render */
+  if(inN){
+    var see = el("button","seeall","See everyone's picks");
+    see.id = "btnSeeAll";
+    see.addEventListener("click", showAllPicks);
+    host.appendChild(see);
+  }
 }
 
 /* ---------- standings ---------- */
@@ -1406,7 +1467,55 @@ async function sendToForm(week, text){
 
 function closeSlip(){
   $("#slipBox").hidden = true;
+  $("#allPicks").hidden = true;
   $("#drawerBack").hidden = true;
+}
+
+/* Everyone's picks, games down and players across. A game that has not kicked
+   off stays masked — otherwise the last person to submit could read the room
+   and copy it, which is the same reason the game strips hide picks until then. */
+function showAllPicks(){
+  var w = cur(); if(!w) return;
+  var got = w.picks || {};
+  var who = S.players.filter(function(p){ return got[p]; });
+  var openN = w.games.filter(function(g){ return !locked(g); }).length;
+
+  $("#allNote").textContent = who.length
+    ? (openN
+        ? openN + " of these games have not kicked off yet, so those picks stay hidden until they do."
+        : "Every game has kicked off, so the whole week is open.")
+    : "Nobody has submitted for week " + w.n + " yet.";
+
+  var t = $("#allGrid"); t.textContent = "";
+  if(!who.length){ $("#drawerBack").hidden = false; $("#allPicks").hidden = false; return; }
+
+  var thead = document.createElement("thead"), hr = document.createElement("tr");
+  hr.appendChild(el("th","g","Game"));
+  who.forEach(function(p){ hr.appendChild(el("th",null,p)); });
+  thead.appendChild(hr); t.appendChild(thead);
+
+  var tb = document.createElement("tbody");
+  w.games.forEach(function(g){
+    var tr = document.createElement("tr");
+    if(g.pts >= 3) tr.className = "tri";
+    tr.appendChild(el("td","g",
+      (T[g.away]?g.away:g.away) + " @ " + (T[g.home]?g.home:g.home)));
+    var lk = locked(g);
+    who.forEach(function(p){
+      var pick = got[p][g.id];
+      if(!lk){ tr.appendChild(el("td","masked","•")); return; }
+      if(!pick){ tr.appendChild(el("td","masked","—")); return; }
+      var cls = "";
+      if(g.winner && g.winner !== "TIE") cls = (pick === g.winner) ? "hit" : "miss";
+      tr.appendChild(el("td",cls,pick));
+    });
+    tb.appendChild(tr);
+  });
+  t.appendChild(tb);
+
+  $("#drawerBack").hidden = false;
+  $("#allPicks").hidden = false;
+  $("#btnAllClose").focus();
 }
 function showSlip(){
   var w = cur(), st = pickState();
@@ -1576,8 +1685,16 @@ function applyRows(rows){
        silently dropped a post. */
     var m = body.match(/W(\d+)\|([0-9]+=[A-Z]{2,3}(?:\|[0-9]+=[A-Z]{2,3})*)/);
     if(!m){
-      if(body.trim()) wall.push({ who:who, at:(iTime > -1 ? row[iTime] : ""),
-        text:body.trim() });
+      var txt = body.trim();
+      if(txt){
+        /* a reply carries the timestamp of the post it answers, in brackets */
+        var re = txt.match(/^RE\[([^\]]{1,40})\]\s*([\s\S]*)$/);
+        wall.push({
+          who:who, at:(iTime > -1 ? row[iTime] : ""),
+          text: re ? re[2].trim() : txt,
+          re:   re ? re[1] : null
+        });
+      }
       continue;
     }
     var w = wk(+m[1]); if(!w) continue;
@@ -1647,29 +1764,65 @@ function renderWall(){
       : "The wall reads posts from the league spreadsheet, which this page cannot reach from inside Claude. On the published site it fills in by itself."));
     return;
   }
-  var list = el("div","posts");
+  /* thread: top-level posts newest first, each with its replies beneath */
+  var byParent = {};
   posts.forEach(function(p){
-    var c = el("div","post" + (p.pending ? " pending" : "") +
-      (p.who === me ? " mine" : ""));
+    if(!p.re) return;
+    (byParent[p.re] = byParent[p.re] || []).push(p);
+  });
+  Object.keys(byParent).forEach(function(k){
+    byParent[k].sort(function(a,b){ return new Date(a.at) - new Date(b.at); });
+  });
+
+  function postRow(p, isReply){
+    var c = el("div","post" + (isReply ? " reply" : "") +
+      (p.pending ? " pending" : "") + (p.who === me ? " mine" : ""));
     var av = el("span","avatar", p.who.charAt(0).toUpperCase());
     av.style.background = avatarColor(p.who);
     c.appendChild(av);
 
-    /* name and message share one line; long messages wrap under the name */
     var line = el("div","line");
     line.appendChild(el("span","from", p.who));
     line.appendChild(el("span","msg", p.text.replace(/\s+/g, " ")));
     c.appendChild(line);
 
+    if(!isReply && p.at && !p.pending){
+      var rb = el("button","replybtn","Reply");
+      rb.addEventListener("click", function(){ startReply(p); });
+      c.appendChild(rb);
+    }
     var d = p.at ? new Date(p.at) : null;
     c.appendChild(el("span","when", p.pending ? "sending…"
       : (d && !isNaN(d)
         ? d.toLocaleString([], { month:"numeric", day:"numeric",
             hour:"numeric", minute:"2-digit" })
         : "")));
-    list.appendChild(c);
+    return c;
+  }
+
+  var list = el("div","posts");
+  posts.filter(function(p){ return !p.re; }).forEach(function(p){
+    list.appendChild(postRow(p, false));
+    (byParent[p.at] || []).forEach(function(r){
+      list.appendChild(postRow(r, true));
+    });
   });
   host.appendChild(list);
+}
+
+/* ---------- replying ---------- */
+var replyTo = null;
+function startReply(p){
+  replyTo = p;
+  $("#replyTag").hidden = false;
+  $("#replyWho").textContent = p.who;
+  $("#wallText").placeholder = "Reply to " + p.who + "…";
+  $("#wallText").focus();
+}
+function cancelReply(){
+  replyTo = null;
+  $("#replyTag").hidden = true;
+  $("#wallText").placeholder = "Talk your talk. Everyone in the league sees this.";
 }
 
 $("#btnPost").addEventListener("click", async function(){
@@ -1677,13 +1830,16 @@ $("#btnPost").addEventListener("click", async function(){
   if(!me){ $("#whoHint").textContent = "choose your name first"; $("#whoSel").focus(); return; }
   if(!txt){ $("#wallText").focus(); return; }
   b.disabled = true; b.textContent = "Posting…";
+  var parent = replyTo;
+  var payload = parent ? "RE[" + parent.at + "] " + txt : txt;
   try {
-    await sendToForm("WALL", txt);
+    await sendToForm("WALL", payload);
     $("#wallText").value = "";
     /* show it immediately rather than waiting on Google's cache */
-    PENDING.unshift({ who:me, at:Date.now(), text:txt, pending:true });
-    savePending(); renderWall();
-    $("#whoHint").textContent = "posted";
+    PENDING.unshift({ who:me, at:Date.now(), text:txt, pending:true,
+      re: parent ? parent.at : null });
+    savePending(); cancelReply(); renderWall();
+    $("#whoHint").textContent = parent ? "reply posted" : "posted";
     setTimeout(syncPicks, 12000);
     setTimeout(syncPicks, 45000);
   } catch(e){
@@ -2059,9 +2215,11 @@ $("#btnSend").addEventListener("click", async function(){
   b.disabled = false; b.textContent = "Send my picks";
 });
 
+$("#btnAllClose").addEventListener("click", closeSlip);
+$("#btnCancelReply").addEventListener("click", cancelReply);
 $("#drawerBack").addEventListener("click", closeSlip);
 document.addEventListener("keydown", function(e){
-  if(e.key === "Escape" && !$("#slipBox").hidden) closeSlip();
+  if(e.key === "Escape" && (!$("#slipBox").hidden || !$("#allPicks").hidden)) closeSlip();
 });
 
 window.addEventListener("beforeunload", function(e){
