@@ -285,6 +285,17 @@ section[hidden]{display:none}
   gap:16px;flex-wrap:wrap;margin-bottom:6px}
 h2{font-size:36px;font-weight:700;letter-spacing:-.005em;line-height:1.05}
 .lede{color:var(--muted);max-width:62ch;margin:0 0 26px}
+/* week stepper */
+.weeknav{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.weeknav button{font-family:var(--disp);font-size:30px;font-weight:700;
+  line-height:1;color:var(--muted);border:1.5px solid var(--line);
+  width:38px;height:38px;display:grid;place-items:center;flex:none}
+.weeknav button:hover:not(:disabled){color:var(--ink);border-color:var(--ink)}
+.weeknav button:disabled{opacity:.32;cursor:not-allowed}
+.weeknav .wknow{font-family:var(--mono);font-size:10px;font-weight:600;
+  letter-spacing:.12em;text-transform:uppercase;width:auto;height:auto;
+  padding:6px 10px;border-color:var(--flag);color:var(--flag-ink)}
+.weeknav .wknow:hover{background:var(--flag);color:#fff;border-color:var(--flag)}
 
 /* ---------- window groups ---------- */
 .window{margin-bottom:34px}
@@ -788,7 +799,12 @@ details[open] summary::before{content:"▾ "}
 <!-- ============ PICKS ============ -->
 <section id="view-picks">
   <div class="sec-head">
-    <h2 id="weekTitle">Week 1</h2>
+    <div class="weeknav">
+      <button id="wkPrev" aria-label="Previous week">&#8249;</button>
+      <h2 id="weekTitle">Week 1</h2>
+      <button id="wkNext" aria-label="Next week">&#8250;</button>
+      <button class="wknow" id="wkNow" hidden>Back to this week</button>
+    </div>
   </div>
   <p class="lede" id="weekLede"></p>
   <div id="gameList"></div>
@@ -964,7 +980,7 @@ details[open] summary::before{content:"▾ "}
 
 <script>
 /* Shown in the footer so you can tell at a glance which build is live. */
-var BUILD = "v35 · 7 Sep";
+var BUILD = "v36 · 7 Sep";
 
 var T = {
   ARI:["Arizona","Cardinals","#97233F"], ATL:["Atlanta","Falcons","#A71930"],
@@ -1052,7 +1068,40 @@ function remember(){
 /* ---------- helpers ---------- */
 function wk(n){ for(var i=0;i<S.weeks.length;i++) if(S.weeks[i].n===n) return S.weeks[i];
   return null; }
-function cur(){ return wk(S.currentWeek) || S.weeks[S.weeks.length-1] || null; }
+
+/* The week on screen is separate from the commissioner's "current week": it
+   follows the calendar on its own, and only stops doing so once someone
+   arrows away on purpose. */
+var viewWeek = null, weekPinned = false;
+function weekList(){
+  return S.weeks.slice().sort(function(a,b){ return a.n - b.n; });
+}
+function autoWeek(){
+  /* a week stays up until roughly four hours past its last kickoff, so the
+     Monday nighter is still on screen while it is being played */
+  var GRACE = 4 * 3600 * 1000, now = Date.now(), ws = weekList();
+  for(var i = 0; i < ws.length; i++){
+    if(ws[i].games.some(function(g){
+      return new Date(g.kick).getTime() + GRACE > now;
+    })) return ws[i].n;
+  }
+  return ws.length ? ws[ws.length - 1].n : S.currentWeek;
+}
+function cur(){
+  if(!weekPinned) viewWeek = autoWeek();
+  return wk(viewWeek) || wk(S.currentWeek) || S.weeks[S.weeks.length - 1] || null;
+}
+function stepWeek(dir){
+  var ws = weekList(), w = cur(); if(!w) return;
+  for(var i = 0; i < ws.length; i++){
+    if(ws[i].n === w.n && ws[i + dir]){
+      viewWeek = ws[i + dir].n;
+      weekPinned = (viewWeek !== autoWeek());
+      renderWeek(); renderStrip(); renderRoster(); renderConfirm();
+      return;
+    }
+  }
+}
 function locked(g){ return Date.now() >= new Date(g.kick).getTime(); }
 function slotName(g){
   var d = new Date(g.kick), day = d.getDay(), h = d.getHours();
@@ -1180,6 +1229,10 @@ function renderWeek(){
   host.textContent = "";
   if(!w){ host.appendChild(el("p","lede","No slate loaded yet. The commissioner adds the week's games in the Commissioner tab.")); return; }
   $("#weekTitle").textContent = "Week " + w.n;
+  var ws = weekList(), idx = ws.findIndex(function(x){ return x.n === w.n; });
+  $("#wkPrev").disabled = idx <= 0;
+  $("#wkNext").disabled = idx < 0 || idx >= ws.length - 1;
+  $("#wkNow").hidden = !weekPinned;
 
   var total = w.games.reduce(function(a,g){ return a+g.pts; },0);
   var openN = w.games.filter(function(g){ return !locked(g); }).length;
@@ -2138,6 +2191,13 @@ function applyWallSize(){
   $("#wall").classList.toggle("big", wallBig);
   $("#btnWallSize").textContent = wallBig ? "Collapse" : "Expand";
 }
+$("#wkPrev").addEventListener("click", function(){ stepWeek(-1); });
+$("#wkNext").addEventListener("click", function(){ stepWeek(1); });
+$("#wkNow").addEventListener("click", function(){
+  weekPinned = false; viewWeek = autoWeek();
+  renderWeek(); renderStrip(); renderRoster(); renderConfirm();
+});
+
 $("#btnWallSize").addEventListener("click", function(){
   wallBig = !wallBig;
   try { localStorage.setItem("tsh.wallbig", wallBig ? "1" : "0"); } catch(e){}
