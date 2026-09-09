@@ -1001,7 +1001,7 @@ details[open] summary::before{content:"▾ "}
 
 <script>
 /* Shown in the footer so you can tell at a glance which build is live. */
-var BUILD = "v40 · 8 Sep";
+var BUILD = "v41 · 8 Sep";
 
 var T = {
   ARI:["Arizona","Cardinals","#97233F"], ATL:["Atlanta","Falcons","#A71930"],
@@ -2502,11 +2502,12 @@ window.addEventListener("beforeunload", function(e){
 });
 
 /* ---------- go ---------- */
-if(!IN_ARTIFACT){
-  $("#btnSave").textContent = "Save";
-  $("#pubHelp").textContent = "Saving builds a fresh index.html and downloads it. " +
-    "Drop that file on your Vercel project to put the new standings live — " +
-    "the web address never changes.";
+/* The panel's own copy is correct for the published site; only the Claude copy
+   needs relabelling, where this button republishes rather than hands over a
+   file. (This block used to rewrite the help text too, which is why the page
+   still claimed results needed an upload long after they stopped needing one.) */
+if(IN_ARTIFACT){
+  $("#btnSave").textContent = "Save to this page";
 }
 $("#footBuild").textContent = BUILD;
 
