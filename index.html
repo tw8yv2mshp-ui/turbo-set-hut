@@ -135,6 +135,18 @@ h1 .hut::after{content:"";position:absolute;left:0;right:.06em;bottom:.08em;
   .strip div:first-child{padding-left:16px}
 }
 
+/* Every tab but This Week takes over the page, so the board collapses to a
+   title bar: the branding stays, the 300px of artwork and readouts do not.
+   Placed after the mobile block so it wins there too. */
+.board.compact{grid-template-columns:1fr;padding:13px 26px}
+.board.compact .board-art,
+.board.compact .strip,
+.board.compact .tagline,
+.board.compact .season,
+.board.compact .marquee-top{display:none}
+.board.compact .board-txt{padding-bottom:0}
+.board.compact h1{font-size:clamp(24px,3.4vw,34px);padding-top:0}
+
 /* ---------- submission confirmation ---------- */
 /* sits between the board and the name picker so it is on screen at load */
 .confirm{display:flex;gap:14px;align-items:flex-start;margin:20px 0 0;
@@ -768,6 +780,7 @@ details[open] summary::before{content:"▾ "}
   </div>
 </header>
 
+<div id="weekTop">
 <div class="confirm" id="subBanner" hidden></div>
 
 <div class="whobar">
@@ -797,6 +810,7 @@ details[open] summary::before{content:"▾ "}
     <a id="wallFormLink" target="_blank" rel="noopener">Open the form instead</a>.</p>
   <div id="wallList"></div>
 </section>
+</div>
 
 <!-- ============ PICKS ============ -->
 <section id="view-picks">
@@ -987,7 +1001,7 @@ details[open] summary::before{content:"▾ "}
 
 <script>
 /* Shown in the footer so you can tell at a glance which build is live. */
-var BUILD = "v39 · 8 Sep";
+var BUILD = "v40 · 8 Sep";
 
 var T = {
   ARI:["Arizona","Cardinals","#97233F"], ATL:["Atlanta","Falcons","#A71930"],
@@ -2052,6 +2066,10 @@ function show(v){
   ["picks","standings","rules","comm"].forEach(function(k){
     $("#view-"+k).hidden = (k !== v);
   });
+  /* the banner, name picker and wall belong to This Week — every other tab
+     takes over the page instead of sitting below them */
+  $("#weekTop").hidden = (v !== "picks");
+  $("#board").classList.toggle("compact", v !== "picks");
   document.querySelectorAll(".tab").forEach(function(t){
     t.setAttribute("aria-selected", t.dataset.view === v ? "true" : "false");
   });
@@ -2062,10 +2080,8 @@ function show(v){
 document.querySelectorAll(".tab").forEach(function(t){
   t.addEventListener("click", function(){
     show(t.dataset.view);
-    /* the nav sits above the marquee and the wall, so bring the chosen
-       section up to it rather than leaving the reader to scroll for it */
-    var sec = document.getElementById("view-" + t.dataset.view);
-    if(sec) sec.scrollIntoView({ behavior:"smooth", block:"start" });
+    /* each tab is its own page, so start at the top of it */
+    window.scrollTo({ top:0, behavior:"auto" });
   });
 });
 
