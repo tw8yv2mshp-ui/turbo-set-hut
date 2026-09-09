@@ -204,7 +204,7 @@ h1 .hut::after{content:"";position:absolute;left:0;right:.06em;bottom:.08em;
 }
 
 /* ---------- the wall ---------- */
-.wall{padding:20px 0 22px;border-bottom:3px solid var(--ink)}
+.wall{padding:20px 0 24px}
 .wall-head{display:flex;align-items:baseline;gap:12px;margin-bottom:12px}
 .wall-head h2{font-size:27px}
 .wall-head .n{font-family:var(--mono);font-size:11px;color:var(--muted);
@@ -262,7 +262,8 @@ h1 .hut::after{content:"";position:absolute;left:0;right:.06em;bottom:.08em;
 /* the tab bar is the page's nav: first thing on the page, sticks while scrolling */
 .tabs{display:flex;gap:0;flex-wrap:wrap;border-bottom:1px solid var(--line);
   margin-bottom:0;position:sticky;top:0;background:var(--ground);z-index:20}
-section[id^="view-"]{scroll-margin-top:56px}
+/* the sections are separated from the wall by space, not a rule */
+section[id^="view-"]{scroll-margin-top:56px;padding-top:20px}
 .tab{font-family:var(--disp);font-size:20px;font-weight:700;text-transform:uppercase;
   letter-spacing:.02em;padding:13px 18px 11px;color:var(--muted);
   border-bottom:3px solid transparent;margin-bottom:-1px}
@@ -986,7 +987,7 @@ details[open] summary::before{content:"▾ "}
 
 <script>
 /* Shown in the footer so you can tell at a glance which build is live. */
-var BUILD = "v37 · 8 Sep";
+var BUILD = "v39 · 8 Sep";
 
 var T = {
   ARI:["Arizona","Cardinals","#97233F"], ATL:["Atlanta","Falcons","#A71930"],
@@ -1590,13 +1591,15 @@ function formPostURL(){
   if(!S.form.action) return null;
   return S.form.action.replace(/\/viewform.*$/, "/formResponse");
 }
-async function sendToForm(week, text){
+async function sendToForm(week, text, asName){
   var url = formPostURL();
   if(!url || !S.form.eName || !S.form.eWeek || !S.form.ePicks){
     throw new Error("form not connected");
   }
+  /* the form's name question is multiple choice, so an unlisted value would be
+     rejected by Google — and a no-cors post cannot see that rejection */
   var fd = new FormData();
-  fd.append(S.form.eName,  me);
+  fd.append(S.form.eName,  asName || me);
   fd.append(S.form.eWeek,  week);
   fd.append(S.form.ePicks, text);
   fd.append("fvv", "1");
@@ -2282,17 +2285,20 @@ $("#btnResults").addEventListener("click", async function(){
   var w = wk(+$("#commWeekSel").value) || cur();
   var b = this, ps = $("#pubState");
   if(!w) return;
-  if(!me || (S.resultsBy || []).indexOf(me) < 0){
-    ps.textContent = "Choose your name up top first — results can only be published by " +
-      (S.resultsBy || []).join(" or ");
-    return;
-  }
+  /* the commissioner code is the gate, not the dropdown: publish under
+     whichever of the allowed names is selected, else the commissioner's */
+  var allowed = S.resultsBy || [];
+  var by = (me && allowed.indexOf(me) > -1) ? me
+         : (allowed.indexOf(S.commissioner) > -1 ? S.commissioner : allowed[0]);
+  if(!by){ ps.textContent = "No one is set up to publish results"; return; }
+
   b.disabled = true; ps.textContent = "Publishing…";
   try {
-    await sendToForm("RESULTS", resultsPayload(w));
+    await sendToForm("RESULTS", resultsPayload(w), by);
     dirty = false;
     $("#saveState").textContent = "Published";
-    ps.textContent = "Week " + w.n + " results published — everyone sees them within a few minutes";
+    ps.textContent = "Week " + w.n + " results published as " + by +
+      " — everyone sees them within a few minutes";
     renderStandings(); renderWeek(); renderStrip();
   } catch(e){
     ps.textContent = "Could not publish — " + ((e && e.message) || "try again");
