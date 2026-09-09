@@ -548,6 +548,7 @@ details[open] summary::before{content:"▾ "}
   "commissioner": "Ricardo",
   "currentWeek": 1,
   "commishCode": "hut",
+  "resultsBy": ["Ricardo", "David"],
   "picksCsv": "https://docs.google.com/spreadsheets/d/e/2PACX-1vQl05La2U_2FbZhsoVx3Rylzk4cLZtmSztaiX3wwEFPrI5ltLSP6clWBsLJNnheVfVz6e-ng_Q7PSPo/pub?gid=1089371907&single=true&output=csv",
   "form": {
     "action": "https://docs.google.com/forms/d/e/1FAIpQLScv0R4gtD_oeCsSR0mMdG94WyPfUS7QZkzxgx2-GaQWFhinQA/viewform",
@@ -891,10 +892,10 @@ details[open] summary::before{content:"▾ "}
     <div class="commgames" id="commGames"></div>
 
     <div class="row" style="margin-top:22px">
-      <button class="btn go" id="btnSave">Save</button>
+      <button class="btn go" id="btnResults">Publish results</button>
       <span class="eyebrow" id="pubState"></span>
     </div>
-    <p class="lede" style="font-size:15px;margin-top:8px" id="pubHelp">Saving publishes a new version of this page for everyone holding the link. Only people with edit access can save.</p>
+    <p class="lede" style="font-size:15px;margin-top:8px" id="pubHelp">Results go into the league spreadsheet, so every phone picks them up within a few minutes. Nothing to upload and nothing to redeploy.</p>
 
     <details style="margin-top:30px">
       <summary>Schedule and setup</summary>
@@ -922,6 +923,11 @@ details[open] summary::before{content:"▾ "}
         <div class="field"><textarea id="importIn" rows="3" placeholder="Paste response rows here"></textarea></div>
         <div class="row"><button class="btn sm" id="btnImport">Import</button>
           <span class="eyebrow" id="importState"></span></div>
+
+        <div class="window-head"><span class="name">Rebuild the site file</span><span class="rule"></span></div>
+        <p class="lede" style="font-size:15px">Only needed after changing the schedule, the roster or the rules &mdash; results do not need this. Downloads a fresh <b>index.html</b> to upload to GitHub.</p>
+        <div class="row"><button class="btn sm" id="btnSave">Download site file</button>
+          <span class="eyebrow" id="saveFileState"></span></div>
       </div>
     </details>
   </div>
@@ -980,7 +986,7 @@ details[open] summary::before{content:"▾ "}
 
 <script>
 /* Shown in the footer so you can tell at a glance which build is live. */
-var BUILD = "v36 · 7 Sep";
+var BUILD = "v37 · 8 Sep";
 
 var T = {
   ARI:["Arizona","Cardinals","#97233F"], ATL:["Atlanta","Falcons","#A71930"],
@@ -1812,6 +1818,31 @@ function applyRows(rows){
     if(S.players.indexOf(who) < 0) continue;
     var body = String(row[iPicks] || "");
 
+    /* Results ride the same spreadsheet as picks, which is what keeps the
+       weekly job off GitHub entirely: the commissioner clicks winners, the
+       row lands here, and everyone's page picks it up on its next read.
+       Only names on the resultsBy list count, and local unsaved edits are
+       never clobbered by an incoming row. */
+    var mR = body.match(/^RESULTS\[W(\d+)\]\s*(.*)$/);
+    if(mR){
+      if((S.resultsBy || []).indexOf(who) < 0) continue;
+      if(dirty) continue;
+      var rw = wk(+mR[1]); if(!rw) continue;
+      mR[2].split("|").forEach(function(part){
+        var kv = part.split("="); if(kv.length < 2) return;
+        var bits = kv[1].split("@");
+        var g = gameById(rw, "w" + rw.n + "-" + kv[0]); if(!g) return;
+        var win = bits[0];
+        g.winner = (win === "-" || !win) ? ""
+          : (win === "TIE" || T[win]) ? win : g.winner;
+        if(bits[1] !== undefined){
+          var p = parseFloat(bits[1]);
+          if(!isNaN(p) && p >= 0) g.pts = p;
+        }
+      });
+      continue;
+    }
+
     /* What makes a row picks is the code the site writes into it, nothing
        else. Anything without that code is a message for the wall — whatever
        ended up in the Week box. Keying off Week meant one stray keystroke
@@ -2239,6 +2270,36 @@ $("#btnImport").addEventListener("click", function(){
   if(n){ mark(); renderStandings(); renderWeek(); renderStrip(); }
   else notice("Nothing imported", "Each row needs a player's name and the CODE line from their pick slip.");
 });
+/* One row that carries a whole week's results: winner per game (or TIE, or "-"
+   for undecided) and what each game is worth. */
+function resultsPayload(w){
+  return "RESULTS[W" + w.n + "] " + w.games.map(function(g){
+    return g.id.split("-")[1] + "=" + (g.winner || "-") + "@" + g.pts;
+  }).join("|");
+}
+
+$("#btnResults").addEventListener("click", async function(){
+  var w = wk(+$("#commWeekSel").value) || cur();
+  var b = this, ps = $("#pubState");
+  if(!w) return;
+  if(!me || (S.resultsBy || []).indexOf(me) < 0){
+    ps.textContent = "Choose your name up top first — results can only be published by " +
+      (S.resultsBy || []).join(" or ");
+    return;
+  }
+  b.disabled = true; ps.textContent = "Publishing…";
+  try {
+    await sendToForm("RESULTS", resultsPayload(w));
+    dirty = false;
+    $("#saveState").textContent = "Published";
+    ps.textContent = "Week " + w.n + " results published — everyone sees them within a few minutes";
+    renderStandings(); renderWeek(); renderStrip();
+  } catch(e){
+    ps.textContent = "Could not publish — " + ((e && e.message) || "try again");
+  }
+  b.disabled = false;
+});
+
 /* Rebuild the whole page with the current league state swapped in. */
 function buildDoc(){
   var open = '<scr' + 'ipt type="application/json" id="league-state">';
@@ -2254,7 +2315,7 @@ function buildDoc(){
 var IN_ARTIFACT = !!(window.claude && window.claude.use);
 
 $("#btnSave").addEventListener("click", async function(){
-  var btn = this, ps = $("#pubState");
+  var btn = this, ps = $("#saveFileState");
   btn.disabled = true;
   var out = buildDoc();
 
