@@ -89,11 +89,6 @@ h1 .beat.drawl{color:var(--board-ink)}
 h1 .hut{color:var(--board-gold);position:relative;letter-spacing:-.02em}
 h1 .hut::after{content:"";position:absolute;left:0;right:.06em;bottom:.08em;
   height:.06em;background:var(--board-gold)}
-.season{font-family:var(--mono);font-size:11px;font-weight:600;
-  letter-spacing:.24em;text-transform:uppercase;color:var(--board-gold);
-  margin:14px 0 0}
-.tagline{font-family:var(--body);font-size:16.5px;color:var(--board-muted);
-  max-width:36ch;margin:12px 0 0;font-style:italic}
 /* An <img> in normal flow contributes its own intrinsic height, so it sizes the
    grid row and then height:100% just measures itself — the image keeps winning.
    The wrapper has no intrinsic height, so the text column sets the row; the
@@ -141,8 +136,6 @@ h1 .hut::after{content:"";position:absolute;left:0;right:.06em;bottom:.08em;
 .board.compact{grid-template-columns:1fr;padding:13px 26px}
 .board.compact .board-art,
 .board.compact .strip,
-.board.compact .tagline,
-.board.compact .season,
 .board.compact .marquee-top{display:none}
 .board.compact .board-txt{padding-bottom:0}
 .board.compact h1{font-size:clamp(24px,3.4vw,34px);padding-top:0}
@@ -225,15 +218,15 @@ h1 .hut::after{content:"";position:absolute;left:0;right:.06em;bottom:.08em;
 .wall-compose textarea{flex:1;font-family:var(--body);font-size:16px;min-height:46px;
   resize:vertical;background:var(--surface)}
 /* one post per line; the box shows three and scrolls past that */
-.posts{--post-h:41px;background:var(--surface);border:1px solid var(--line);
-  max-height:calc(var(--post-h) * 3);overflow-y:auto;overscroll-behavior:contain}
-.post{display:flex;gap:9px;align-items:baseline;padding:9px 13px;
-  line-height:1.35;border-bottom:1px solid var(--line-soft)}
+.posts{--post-h:34px;background:var(--surface);border:1px solid var(--line);
+  max-height:calc(var(--post-h) * 5);overflow-y:auto;overscroll-behavior:contain}
+.post{display:flex;gap:8px;align-items:baseline;padding:6px 12px;
+  line-height:1.3;border-bottom:1px solid var(--line-soft)}
 .post:last-child{border-bottom:none}
 .post .avatar{width:19px;height:19px;flex:none;border-radius:50%;
   display:inline-grid;place-items:center;align-self:center;color:#fff;
   font-family:var(--disp);font-size:11px;font-weight:800;line-height:1}
-.post .line{flex:1;min-width:0;font-size:15px}
+.post .line{flex:1 1 220px;min-width:0;font-size:14.5px}
 .post .from{font-family:var(--disp);font-size:17px;font-weight:700;
   text-transform:uppercase;letter-spacing:.01em;margin-right:7px}
 .post .msg{overflow-wrap:anywhere}
@@ -247,17 +240,16 @@ h1 .hut::after{content:"";position:absolute;left:0;right:.06em;bottom:.08em;
 .post.reply::before{content:"↳";position:absolute;left:16px;color:var(--muted);
   font-size:13px}
 .post{position:relative;flex-wrap:wrap}
-/* reactions sit on their own line under the post */
-.reacts{flex-basis:100%;display:flex;flex-wrap:wrap;gap:5px;margin:7px 0 0 28px}
-.post.reply .reacts{margin-left:24px}
-.rchip{font-family:var(--mono);font-size:12px;font-weight:600;line-height:1;
-  padding:4px 8px;border:1.5px solid var(--line);background:var(--surface);
+/* reactions share the row with the message, reply and timestamp */
+.reacts{display:flex;flex-wrap:wrap;gap:4px;flex:none;margin:0}
+.rchip{font-family:var(--mono);font-size:11px;font-weight:600;line-height:1;
+  padding:3px 6px;border:1px solid var(--line);background:var(--surface);
   color:var(--muted);white-space:nowrap}
 .rchip:hover{border-color:var(--ink);color:var(--ink)}
 .rchip.on{border-color:var(--turf);color:var(--ink);
   background:color-mix(in srgb,var(--turf) 18%,transparent)}
-.rchip.radd{font-size:13px;padding:3px 9px;border-style:dashed}
-.rchip.pick{font-size:15px;padding:2px 7px;border-color:var(--line-soft)}
+.rchip.radd{font-size:12px;padding:2px 7px;border-style:dashed}
+.rchip.pick{font-size:14px;padding:1px 5px;border-color:var(--line-soft)}
 .replybtn{font-family:var(--mono);font-size:10px;font-weight:600;
   letter-spacing:.1em;text-transform:uppercase;color:var(--muted);
   flex:none;padding:2px 6px;opacity:0}
@@ -309,9 +301,10 @@ section[hidden]{display:none}
   gap:16px;flex-wrap:wrap;margin-bottom:6px}
 h2{font-size:36px;font-weight:700;letter-spacing:-.005em;line-height:1.05}
 .lede{color:var(--muted);max-width:62ch;margin:0 0 26px}
-/* week stepper, set on a turf-green band so it reads as the header of the slate */
+/* week stepper on the same navy as the scoreboard, so the slate reads as one
+   continuous object from header to games */
 .weeknav{display:flex;align-items:center;gap:12px;flex-wrap:wrap;width:100%;
-  background:var(--turf);color:#fff;padding:10px 14px;
+  background:var(--board);color:var(--board-ink);padding:20px 18px;
   border-left:6px solid var(--board-gold)}
 .weeknav h2{color:#fff;font-size:clamp(26px,4.4vw,34px);line-height:1}
 .weeknav button{font-family:var(--disp);font-size:26px;font-weight:700;
@@ -774,6 +767,7 @@ details[open] summary::before{content:"▾ "}
   <div class="board" id="board">
     <div class="board-txt">
       <div class="marquee-top">
+        <span class="eyebrow" id="seasonTag">2026 Inaugural Season</span>
         <span class="eyebrow">Indacochea &middot; Sobel &middot; Sebso</span>
       </div>
       <h1 aria-label="Turbo Set Hut">
@@ -781,8 +775,6 @@ details[open] summary::before{content:"▾ "}
         <span class="beat drawl" aria-hidden="true">Set&hellip;</span>
         <span class="hut" aria-hidden="true">Hut!</span>
       </h1>
-      <p class="season" id="seasonTag">2026 Inaugural Season</p>
-      <p class="tagline">Straight up, no spreads. Primetime counts triple. Somebody has to live in the cellar.</p>
     </div>
     <div class="strip">
       <div><span class="k">Week</span><span class="v" id="stWeek">&mdash;</span></div>
@@ -1018,7 +1010,7 @@ details[open] summary::before{content:"▾ "}
 
 <script>
 /* Shown in the footer so you can tell at a glance which build is live. */
-var BUILD = "v42 · 9 Sep";
+var BUILD = "v43 · 10 Sep";
 
 var T = {
   ARI:["Arizona","Cardinals","#97233F"], ATL:["Atlanta","Falcons","#A71930"],
@@ -2023,18 +2015,6 @@ function renderWall(){
     line.appendChild(el("span","msg", p.text.replace(/\s+/g, " ")));
     c.appendChild(line);
 
-    if(!isReply && p.at && !p.pending){
-      var rb = el("button","replybtn","Reply");
-      rb.addEventListener("click", function(){ startReply(p); });
-      c.appendChild(rb);
-    }
-    var d = p.at ? new Date(p.at) : null;
-    c.appendChild(el("span","when", p.pending ? "sending…"
-      : (d && !isNaN(d)
-        ? d.toLocaleString([], { month:"numeric", day:"numeric",
-            hour:"numeric", minute:"2-digit" })
-        : "")));
-
     if(p.at && !p.pending){
       var bar = el("div","reacts");
       var map = reactionsOn(p.at), tally = {}, names = {};
@@ -2065,6 +2045,19 @@ function renderWall(){
       }
       c.appendChild(bar);
     }
+
+    /* reply and timestamp close the row, after the reactions */
+    if(!isReply && p.at && !p.pending){
+      var rb = el("button","replybtn","Reply");
+      rb.addEventListener("click", function(){ startReply(p); });
+      c.appendChild(rb);
+    }
+    var d = p.at ? new Date(p.at) : null;
+    c.appendChild(el("span","when", p.pending ? "sending…"
+      : (d && !isNaN(d)
+        ? d.toLocaleString([], { month:"numeric", day:"numeric",
+            hour:"numeric", minute:"2-digit" })
+        : "")));
     return c;
   }
 
