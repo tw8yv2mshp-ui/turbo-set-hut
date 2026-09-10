@@ -246,7 +246,18 @@ h1 .hut::after{content:"";position:absolute;left:0;right:.06em;bottom:.08em;
 .post.reply .line{font-size:14px}
 .post.reply::before{content:"↳";position:absolute;left:16px;color:var(--muted);
   font-size:13px}
-.post{position:relative}
+.post{position:relative;flex-wrap:wrap}
+/* reactions sit on their own line under the post */
+.reacts{flex-basis:100%;display:flex;flex-wrap:wrap;gap:5px;margin:7px 0 0 28px}
+.post.reply .reacts{margin-left:24px}
+.rchip{font-family:var(--mono);font-size:12px;font-weight:600;line-height:1;
+  padding:4px 8px;border:1.5px solid var(--line);background:var(--surface);
+  color:var(--muted);white-space:nowrap}
+.rchip:hover{border-color:var(--ink);color:var(--ink)}
+.rchip.on{border-color:var(--turf);color:var(--ink);
+  background:color-mix(in srgb,var(--turf) 18%,transparent)}
+.rchip.radd{font-size:13px;padding:3px 9px;border-style:dashed}
+.rchip.pick{font-size:15px;padding:2px 7px;border-color:var(--line-soft)}
 .replybtn{font-family:var(--mono);font-size:10px;font-weight:600;
   letter-spacing:.1em;text-transform:uppercase;color:var(--muted);
   flex:none;padding:2px 6px;opacity:0}
@@ -298,17 +309,23 @@ section[hidden]{display:none}
   gap:16px;flex-wrap:wrap;margin-bottom:6px}
 h2{font-size:36px;font-weight:700;letter-spacing:-.005em;line-height:1.05}
 .lede{color:var(--muted);max-width:62ch;margin:0 0 26px}
-/* week stepper */
-.weeknav{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.weeknav button{font-family:var(--disp);font-size:30px;font-weight:700;
-  line-height:1;color:var(--muted);border:1.5px solid var(--line);
-  width:38px;height:38px;display:grid;place-items:center;flex:none}
-.weeknav button:hover:not(:disabled){color:var(--ink);border-color:var(--ink)}
-.weeknav button:disabled{opacity:.32;cursor:not-allowed}
+/* week stepper, set on a turf-green band so it reads as the header of the slate */
+.weeknav{display:flex;align-items:center;gap:12px;flex-wrap:wrap;width:100%;
+  background:var(--turf);color:#fff;padding:10px 14px;
+  border-left:6px solid var(--board-gold)}
+.weeknav h2{color:#fff;font-size:clamp(26px,4.4vw,34px);line-height:1}
+.weeknav button{font-family:var(--disp);font-size:26px;font-weight:700;
+  line-height:1;color:rgba(255,255,255,.72);border:1.5px solid rgba(255,255,255,.4);
+  width:34px;height:34px;display:grid;place-items:center;flex:none}
+.weeknav button:hover:not(:disabled){color:#fff;border-color:#fff;
+  background:rgba(255,255,255,.14)}
+.weeknav button:disabled{opacity:.28;cursor:not-allowed}
 .weeknav .wknow{font-family:var(--mono);font-size:10px;font-weight:600;
   letter-spacing:.12em;text-transform:uppercase;width:auto;height:auto;
-  padding:6px 10px;border-color:var(--flag);color:var(--flag-ink)}
-.weeknav .wknow:hover{background:var(--flag);color:#fff;border-color:var(--flag)}
+  padding:6px 10px;margin-left:auto;
+  border-color:var(--board-gold);color:var(--board-gold)}
+.weeknav .wknow:hover{background:var(--board-gold);color:var(--board);
+  border-color:var(--board-gold)}
 
 /* ---------- window groups ---------- */
 .window{margin-bottom:34px}
@@ -1001,7 +1018,7 @@ details[open] summary::before{content:"▾ "}
 
 <script>
 /* Shown in the footer so you can tell at a glance which build is live. */
-var BUILD = "v41 · 8 Sep";
+var BUILD = "v42 · 9 Sep";
 
 var T = {
   ARI:["Arizona","Cardinals","#97233F"], ATL:["Atlanta","Falcons","#A71930"],
@@ -1791,7 +1808,7 @@ function parseCSV(txt){
   return rows;
 }
 
-var WALL = [];
+var WALL = [], REACTS = {};
 var LATE = 0;   /* picks ignored because the slip landed after kickoff */
 
 function gameById(w, id){
@@ -1814,7 +1831,7 @@ function applyRows(rows){
   var iName = col("name"), iPicks = col("picks"),
       iWeek = col("week"), iTime = col("timestamp");
   if(iName < 0 || iPicks < 0) return 0;
-  var n = 0, wall = [];
+  var n = 0, wall = [], reacts = {};
 
   /* A later slip must overwrite an earlier one game by game — that is the whole
      rule: your last pick before kickoff is the one that counts. Google appends
@@ -1840,6 +1857,16 @@ function applyRows(rows){
        row lands here, and everyone's page picks it up on its next read.
        Only names on the resultsBy list count, and local unsaved edits are
        never clobbered by an incoming row. */
+    /* a reaction: one per person per post, so a later row replaces an earlier
+       one and "-" clears it */
+    var mX = body.match(/^REACT\[([^\]]{1,40})\]\s*(.*)$/);
+    if(mX){
+      var pTs = mX[1], em = mX[2].trim();
+      reacts[pTs] = reacts[pTs] || {};
+      if(!em || em === "-") delete reacts[pTs][who]; else reacts[pTs][who] = em;
+      continue;
+    }
+
     var mR = body.match(/^RESULTS\[W(\d+)\]\s*(.*)$/);
     if(mR){
       if((S.resultsBy || []).indexOf(who) < 0) continue;
@@ -1904,6 +1931,7 @@ function applyRows(rows){
     n++;
   }
   WALL = wall.reverse();   /* newest first */
+  REACTS = reacts;
   LATE = late;
   return n;
 }
@@ -1926,6 +1954,34 @@ function livePosts(){
   });
   savePending();
   return PENDING.concat(WALL);
+}
+
+/* ---------- reactions ---------- */
+var EMOJI = ["👍","🔥","😂","😮","💀","🏈"];
+var MYREACT = {};   /* my own, shown before Google's copy catches up */
+try { MYREACT = JSON.parse(localStorage.getItem("tsh.reacts") || "{}"); } catch(e){}
+var pickerFor = null;
+
+function reactionsOn(ts){
+  var map = Object.assign({}, REACTS[ts] || {});
+  var mine = me ? MYREACT[ts] : null;
+  if(me && mine){ if(mine === "-") delete map[me]; else map[me] = mine; }
+  return map;
+}
+async function react(ts, emoji){
+  if(!me){ needName(); return; }
+  var map = reactionsOn(ts);
+  var next = (map[me] === emoji) ? "-" : emoji;   /* tapping the same one clears it */
+  MYREACT[ts] = next;
+  try { localStorage.setItem("tsh.reacts", JSON.stringify(MYREACT)); } catch(e){}
+  pickerFor = null;
+  renderWall();
+  try {
+    await sendToForm("WALL", "REACT[" + ts + "] " + next);
+    setTimeout(syncPicks, 12000);
+  } catch(e){
+    $("#whoHint").textContent = "could not save that reaction";
+  }
 }
 
 var AVATAR = ["#2E8C74","#4176B8","#B8811A","#3C6E8F","#7A4F86","#4F8C3A"];
@@ -1978,6 +2034,37 @@ function renderWall(){
         ? d.toLocaleString([], { month:"numeric", day:"numeric",
             hour:"numeric", minute:"2-digit" })
         : "")));
+
+    if(p.at && !p.pending){
+      var bar = el("div","reacts");
+      var map = reactionsOn(p.at), tally = {}, names = {};
+      Object.keys(map).forEach(function(person){
+        var e = map[person];
+        tally[e] = (tally[e] || 0) + 1;
+        names[e] = (names[e] ? names[e] + ", " : "") + person;
+      });
+      Object.keys(tally).forEach(function(e){
+        var chip = el("button","rchip" + (map[me] === e ? " on" : ""),
+          e + " " + tally[e]);
+        chip.title = names[e];
+        chip.addEventListener("click", function(){ react(p.at, e); });
+        bar.appendChild(chip);
+      });
+      var add = el("button","rchip radd", pickerFor === p.at ? "×" : "+");
+      add.setAttribute("aria-label","Add a reaction");
+      add.addEventListener("click", function(){
+        pickerFor = (pickerFor === p.at) ? null : p.at; renderWall();
+      });
+      bar.appendChild(add);
+      if(pickerFor === p.at){
+        EMOJI.forEach(function(e){
+          var b2 = el("button","rchip pick", e);
+          b2.addEventListener("click", function(){ react(p.at, e); });
+          bar.appendChild(b2);
+        });
+      }
+      c.appendChild(bar);
+    }
     return c;
   }
 
