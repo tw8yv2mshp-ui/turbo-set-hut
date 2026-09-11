@@ -359,13 +359,6 @@ h2{font-size:36px;font-weight:700;letter-spacing:-.005em;line-height:1.05}
 /* a finished game drops to greyscale — only the result keeps its colour
    (the status cell, and the who-picked-which-side list below the teams) */
 .game.done .gmeta{filter:grayscale(1)}
-/* finished games: your pick is one light grey whatever the team, with dark
-   text so it reads clearly on it */
-.game.done .team.picked{background:#CFCFCF;border-color:#CFCFCF;color:#14170F}
-/* ring on the team that won; box-shadow so it adds no width and nothing shifts.
-   Must follow the rule above — same specificity, and the ring's border wins */
-.game.done .team.ring-hit{border-color:var(--win);box-shadow:0 0 0 1.5px var(--win)}
-.game.done .team.ring-miss{border-color:var(--loss);box-shadow:0 0 0 1.5px var(--loss)}
 .gbody{padding:11px 14px 12px 11px;display:grid;
   grid-template-columns:1fr auto;gap:10px 18px;align-items:center}
 .gmeta{grid-column:1/-1;display:flex;align-items:center;gap:10px;flex-wrap:wrap;
@@ -390,7 +383,7 @@ h2{font-size:36px;font-weight:700;letter-spacing:-.005em;line-height:1.05}
   display:grid;place-items:center;font-size:13px;font-weight:700;line-height:1;
   border:2px solid currentColor;opacity:0;transform:scale(.6);
   transition:opacity .12s,transform .12s}
-.team.picked{border-width:2.5px}
+.team.picked{border-width:2.5px;border-color:var(--ink)}
 .team.picked .tcity{display:none}
 .team.picked .check{opacity:1;transform:scale(1)}
 .team.picked .dot{box-shadow:0 0 0 2px currentColor}
@@ -400,6 +393,15 @@ h2{font-size:36px;font-weight:700;letter-spacing:-.005em;line-height:1.05}
   white-space:nowrap}
 .team.picked .yourpick{display:inline}
 .team.picked .check{margin-left:0}
+/* the result, on your pick's label: green ✓ if it won, red ✕ if it lost */
+.team.pick-hit .yourpick{color:var(--win)}
+.team.pick-miss .yourpick{color:var(--loss)}
+.team.pick-hit .check{background:var(--win);border-color:var(--win);color:var(--surface)}
+.team.pick-miss .check{background:var(--loss);border-color:var(--loss);color:var(--surface)}
+/* the team that won — fluorescent, the loudest thing on a finished strip */
+.wonbadge{flex:none;font-family:var(--mono);font-size:10px;font-weight:700;
+  letter-spacing:.1em;text-transform:uppercase;line-height:1;
+  padding:3px 6px 2px;background:#39FF14;color:#0A2A04;border-radius:2px}
 @media (prefers-reduced-motion:reduce){.check{transition:none}}
 
 /* who took which side, once the game has kicked off */
@@ -1039,7 +1041,7 @@ details[open] summary::before{content:"▾ "}
 
 <script>
 /* Shown in the footer so you can tell at a glance which build is live. */
-var BUILD = "v48 · 11 Sep";
+var BUILD = "v49 · 11 Sep";
 
 var T = {
   ARI:["Arizona","Cardinals","#97233F"], ATL:["Atlanta","Falcons","#A71930"],
@@ -1374,28 +1376,29 @@ function gameRow(g, w, mine){
     var d = el("span","dot"); d.style.background = t[2]; d.style.color = t[2];
     b.appendChild(d);
     b.appendChild(el("span","tname", t[1]));
+    /* the team that won wears a badge, whoever picked what */
+    if(g.winner && g.winner !== "TIE" && g.winner === ab){
+      b.appendChild(el("span","wonbadge","Won"));
+    }
     b.appendChild(el("span","tcity", ab));
     b.appendChild(el("span","yourpick", "Your pick"));
-    b.appendChild(el("span","check", "✓"));
+    var ck = el("span","check", "✓");
+    b.appendChild(ck);
 
-    /* Before a result, your pick fills with the team's own colour. After one,
-       the strip is greyscale: your pick is one fixed grey whatever the team
-       (one light grey), and the team that WON gets a ring — green if you
-       called it, red if you didn't. Done here, not with a CSS filter, because
-       a filter over the buttons would grey the ring as well. The pick shown
-       after a result is the one that scored, same as the status cell. */
+    /* Your pick is a black outline, never a fill, before and after the game;
+       the team's colour stays on its swatch. Once the game is final the label
+       reports how it went — green ✓ if the pick won, red ✕ if it lost, neutral
+       for a tie — and the swatches go grey, so the Won badge and the label are
+       the only colour left on the strip. The pick shown after a result is the
+       one that scored, same as the status cell. */
     var sel = g.winner ? mypick : mine[g.id];
+    if(sel === ab) b.classList.add("picked");
     if(g.winner){
       d.style.background = d.style.color = (sel === ab) ? "#858585" : "#C2C2C2";
-      if(sel === ab) b.classList.add("picked");
-      if(sel && g.winner !== "TIE" && g.winner === ab){
-        b.classList.add(sel === g.winner ? "ring-hit" : "ring-miss");
+      if(sel === ab && g.winner !== "TIE"){
+        if(sel === g.winner){ b.classList.add("pick-hit"); }
+        else { b.classList.add("pick-miss"); ck.textContent = "✕"; }
       }
-    } else if(sel === ab){
-      b.classList.add("picked");
-      b.style.background = t[2];
-      b.style.borderColor = t[2];
-      b.style.color = dark(t[2]) ? "#FFFFFF" : "#14170F";
     }
     if(lk){ b.disabled = true; }
     else b.addEventListener("click", function(){
