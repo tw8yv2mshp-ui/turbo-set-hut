@@ -230,6 +230,8 @@ h1 .hut::after{content:"";position:absolute;left:0;right:.06em;bottom:.08em;
 .post .from{font-family:var(--disp);font-size:17px;font-weight:700;
   text-transform:uppercase;letter-spacing:.01em;margin-right:7px}
 .post .msg{overflow-wrap:anywhere}
+.post .at-who{font-family:var(--mono);font-size:12px;font-weight:600;
+  color:var(--flag-ink);margin-right:6px;white-space:nowrap}
 .post .when{font-family:var(--mono);font-size:10px;color:var(--muted);
   letter-spacing:.06em;white-space:nowrap;flex:none;align-self:center}
 .post.mine{background:var(--surface-2)}
@@ -334,12 +336,18 @@ h2{font-size:36px;font-weight:700;letter-spacing:-.005em;line-height:1.05}
 
 /* ---------- game strip ---------- */
 .games{display:flex;flex-direction:column;gap:8px}
-.game{display:grid;grid-template-columns:5px 1fr;background:var(--surface);
+.game{display:grid;grid-template-columns:7px 1fr;background:var(--surface);
   border:1px solid var(--line-soft)}
 .game.tri{border-color:var(--line)}
 .game .rail{background:var(--line-soft)}
 .game.tri .rail{background:var(--flag)}
 .game.locked{opacity:.72}
+/* result on the rail — three classes deep so it outranks the gold 3-pt rail
+   wherever it sits in the file */
+.game.done .rail{background:var(--line)}
+.game.done.hit .rail{background:var(--win)}
+.game.done.miss .rail{background:var(--loss)}
+.game.done.tie .rail{background:var(--flag)}
 .gbody{padding:11px 14px 12px;display:grid;
   grid-template-columns:1fr auto;gap:10px 18px;align-items:center}
 .gmeta{grid-column:1/-1;display:flex;align-items:center;gap:10px;flex-wrap:wrap;
@@ -381,9 +389,6 @@ h2{font-size:36px;font-weight:700;letter-spacing:-.005em;line-height:1.05}
 .by .side.right .who{color:var(--win)}
 .by .side.right .who::after{content:" ✓"}
 .by .nobody{font-style:italic;opacity:.7}
-.team.winner{border-color:var(--win);background:color-mix(in srgb,var(--win) 12%,transparent)}
-.team.correct{border-color:var(--win);border-width:2.5px}
-.team.wrong{border-color:var(--loss);border-width:2.5px}
 .at{display:flex;align-items:center;font-family:var(--mono);font-size:10px;
   color:var(--muted);letter-spacing:.1em;text-transform:uppercase}
 .gnote{font-family:var(--mono);font-size:11px;color:var(--muted);
@@ -1010,7 +1015,7 @@ details[open] summary::before{content:"▾ "}
 
 <script>
 /* Shown in the footer so you can tell at a glance which build is live. */
-var BUILD = "v43 · 10 Sep";
+var BUILD = "v45 · 11 Sep";
 
 var T = {
   ARI:["Arizona","Cardinals","#97233F"], ATL:["Atlanta","Falcons","#A71930"],
@@ -1306,7 +1311,24 @@ function renderWeek(){
 }
 
 function gameRow(g, w, mine){
-  var lk = locked(g), row = el("div","game" + (g.pts===3?" tri":"") + (lk?" locked":""));
+  var lk = locked(g);
+  /* A finished game reports the result on its rail: green if the pick that
+     actually scored was right, red if wrong, gold for a tie. The pick that
+     scored is the spreadsheet's (late picks are already filtered out of it),
+     falling back to this device only if the sheet has nothing. Finished games
+     are not dimmed, so the colour reads at full strength. */
+  var cls = "game" + (g.pts === 3 ? " tri" : "");
+  if(g.winner){
+    var scored = (me && w.picks && w.picks[me]) ? w.picks[me][g.id] : null;
+    var mypick = scored || mine[g.id];
+    cls += " done";
+    if(mypick){
+      cls += g.winner === "TIE" ? " tie" : (mypick === g.winner ? " hit" : " miss");
+    }
+  } else if(lk){
+    cls += " locked";
+  }
+  var row = el("div", cls);
   row.appendChild(el("div","rail"));
   var body = el("div","gbody");
 
@@ -1314,8 +1336,9 @@ function gameRow(g, w, mine){
   meta.appendChild(el("span",null,fmtKick(g)));
   meta.appendChild(el("span","pts", g.pts + (g.pts === 1 ? " pt" : " pts") +
     (g.pts === 3 ? " · primetime" : "")));
-  if(g.winner === "TIE") meta.appendChild(el("span","lockchip","Tie · half points"));
-  else if(g.winner) meta.appendChild(el("span","lockchip","Final"));
+  if(g.winner === "TIE") meta.appendChild(el("span","lockchip","Final · tie · half points"));
+  else if(g.winner) meta.appendChild(el("span","lockchip",
+    "Final · " + (T[g.winner] ? T[g.winner][1] : g.winner) + " won"));
   else if(lk) meta.appendChild(el("span","lockchip","Locked"));
   body.appendChild(meta);
 
@@ -1335,11 +1358,6 @@ function gameRow(g, w, mine){
       b.style.background = t[2];
       b.style.borderColor = t[2];
       b.style.color = dark(t[2]) ? "#FFFFFF" : "#14170F";
-    }
-    /* a tie marks nobody right and nobody wrong */
-    if(g.winner && g.winner !== "TIE"){
-      if(g.winner === ab) b.classList.add("winner");
-      if(mine[g.id] === ab) b.classList.add(mine[g.id] === g.winner ? "correct" : "wrong");
     }
     if(lk){ b.disabled = true; }
     else b.addEventListener("click", function(){
@@ -1993,14 +2011,26 @@ function renderWall(){
       : "The wall reads posts from the league spreadsheet, which this page cannot reach from inside Claude. On the published site it fills in by itself."));
     return;
   }
-  /* thread: top-level posts newest first, each with its replies beneath */
-  var byParent = {};
+  /* Thread: top-level posts newest first, every descendant beneath its root in
+     the order it was written. Replies to replies are allowed but are NOT nested
+     further — a one-line list cannot indent five deep and stay readable, so a
+     nested reply names who it is answering instead. */
+  var byId = {};
+  posts.forEach(function(p){ if(p.at) byId[p.at] = p; });
+  function rootOf(p){
+    var c = p, hops = 0;
+    while(c && c.re && byId[c.re] && hops++ < 25) c = byId[c.re];
+    return c;
+  }
+  var tops = [], kids = {};
   posts.forEach(function(p){
-    if(!p.re) return;
-    (byParent[p.re] = byParent[p.re] || []).push(p);
+    var r = rootOf(p);
+    /* a reply whose parent is missing stands on its own rather than vanishing */
+    if(!r || r === p) tops.push(p);
+    else (kids[r.at] = kids[r.at] || []).push(p);
   });
-  Object.keys(byParent).forEach(function(k){
-    byParent[k].sort(function(a,b){ return new Date(a.at) - new Date(b.at); });
+  Object.keys(kids).forEach(function(k){
+    kids[k].sort(function(a,b){ return new Date(a.at) - new Date(b.at); });
   });
 
   function postRow(p, isReply){
@@ -2012,6 +2042,10 @@ function renderWall(){
 
     var line = el("div","line");
     line.appendChild(el("span","from", p.who));
+    /* name the person being answered when it is not simply the post above */
+    if(isReply && p.re && byId[p.re] && byId[p.re].re){
+      line.appendChild(el("span","at-who", "@" + byId[p.re].who));
+    }
     line.appendChild(el("span","msg", p.text.replace(/\s+/g, " ")));
     c.appendChild(line);
 
@@ -2046,8 +2080,9 @@ function renderWall(){
       c.appendChild(bar);
     }
 
-    /* reply and timestamp close the row, after the reactions */
-    if(!isReply && p.at && !p.pending){
+    /* reply and timestamp close the row, after the reactions — replies can be
+       replied to as well */
+    if(p.at && !p.pending){
       var rb = el("button","replybtn","Reply");
       rb.addEventListener("click", function(){ startReply(p); });
       c.appendChild(rb);
@@ -2062,9 +2097,9 @@ function renderWall(){
   }
 
   var list = el("div","posts");
-  posts.filter(function(p){ return !p.re; }).forEach(function(p){
+  tops.forEach(function(p){
     list.appendChild(postRow(p, false));
-    (byParent[p.at] || []).forEach(function(r){
+    (kids[p.at] || []).forEach(function(r){
       list.appendChild(postRow(r, true));
     });
   });
