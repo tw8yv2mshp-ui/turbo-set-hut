@@ -358,7 +358,14 @@ h2{font-size:36px;font-weight:700;letter-spacing:-.005em;line-height:1.05}
 .game.done.tie .rail::after{content:"½"}
 /* a finished game drops to greyscale — only the result keeps its colour
    (the status cell, and the who-picked-which-side list below the teams) */
-.game.done .gmeta,.game.done .matchup{filter:grayscale(1)}
+.game.done .gmeta{filter:grayscale(1)}
+/* finished games: your pick is the Seahawks' grey whatever the team, with dark
+   text — white on this grey is too faint to read */
+.game.done .team.picked{background:#A1A1A1;border-color:#A1A1A1;color:#14170F}
+/* ring on the team that won; box-shadow so it adds no width and nothing shifts.
+   Must follow the rule above — same specificity, and the ring's border wins */
+.game.done .team.ring-hit{border-color:var(--win);box-shadow:0 0 0 1.5px var(--win)}
+.game.done .team.ring-miss{border-color:var(--loss);box-shadow:0 0 0 1.5px var(--loss)}
 .gbody{padding:11px 14px 12px 11px;display:grid;
   grid-template-columns:1fr auto;gap:10px 18px;align-items:center}
 .gmeta{grid-column:1/-1;display:flex;align-items:center;gap:10px;flex-wrap:wrap;
@@ -387,6 +394,12 @@ h2{font-size:36px;font-weight:700;letter-spacing:-.005em;line-height:1.05}
 .team.picked .tcity{display:none}
 .team.picked .check{opacity:1;transform:scale(1)}
 .team.picked .dot{box-shadow:0 0 0 2px currentColor}
+/* "Your pick" sits beside the check on the team you chose */
+.yourpick{display:none;margin-left:auto;flex:none;font-family:var(--mono);
+  font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;
+  white-space:nowrap}
+.team.picked .yourpick{display:inline}
+.team.picked .check{margin-left:0}
 @media (prefers-reduced-motion:reduce){.check{transition:none}}
 
 /* who took which side, once the game has kicked off */
@@ -1026,7 +1039,7 @@ details[open] summary::before{content:"▾ "}
 
 <script>
 /* Shown in the footer so you can tell at a glance which build is live. */
-var BUILD = "v46 · 11 Sep";
+var BUILD = "v47 · 11 Sep";
 
 var T = {
   ARI:["Arizona","Cardinals","#97233F"], ATL:["Atlanta","Falcons","#A71930"],
@@ -1362,9 +1375,23 @@ function gameRow(g, w, mine){
     b.appendChild(d);
     b.appendChild(el("span","tname", t[1]));
     b.appendChild(el("span","tcity", ab));
+    b.appendChild(el("span","yourpick", "Your pick"));
     b.appendChild(el("span","check", "✓"));
-    if(mine[g.id] === ab){
-      /* fill with the team's own color; flip the text to whatever reads on it */
+
+    /* Before a result, your pick fills with the team's own colour. After one,
+       the strip is greyscale: your pick is one fixed grey whatever the team
+       (the Seahawks' grey), and the team that WON gets a ring — green if you
+       called it, red if you didn't. Done here, not with a CSS filter, because
+       a filter over the buttons would grey the ring as well. The pick shown
+       after a result is the one that scored, same as the status cell. */
+    var sel = g.winner ? mypick : mine[g.id];
+    if(g.winner){
+      d.style.background = d.style.color = (sel === ab) ? "#5F5F5F" : "#A1A1A1";
+      if(sel === ab) b.classList.add("picked");
+      if(sel && g.winner !== "TIE" && g.winner === ab){
+        b.classList.add(sel === g.winner ? "ring-hit" : "ring-miss");
+      }
+    } else if(sel === ab){
       b.classList.add("picked");
       b.style.background = t[2];
       b.style.borderColor = t[2];
