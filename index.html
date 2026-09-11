@@ -336,19 +336,30 @@ h2{font-size:36px;font-weight:700;letter-spacing:-.005em;line-height:1.05}
 
 /* ---------- game strip ---------- */
 .games{display:flex;flex-direction:column;gap:8px}
-.game{display:grid;grid-template-columns:7px 1fr;background:var(--surface);
+.game{display:grid;grid-template-columns:24px 1fr;background:var(--surface);
   border:1px solid var(--line-soft)}
 .game.tri{border-color:var(--line)}
-.game .rail{background:var(--line-soft)}
-.game.tri .rail{background:var(--flag)}
+/* The first column is a status cell. Until a game is final it shows only a
+   slim stripe (gold for 3-point games), so upcoming games stay quiet; once
+   final it fills with the result colour and carries the mark. Every row keeps
+   the same column width so team buttons line up down the whole slate. */
+.game .rail{--railc:var(--line-soft);display:grid;place-items:center;
+  background:linear-gradient(90deg,var(--railc) 0 6px,transparent 6px);
+  color:var(--surface);font-family:var(--disp);font-size:16px;font-weight:800;
+  line-height:1}
+.game.tri .rail{--railc:var(--flag)}
 .game.locked{opacity:.72}
-/* result on the rail — three classes deep so it outranks the gold 3-pt rail
-   wherever it sits in the file */
-.game.done .rail{background:var(--line)}
+.game.done .rail{--railc:var(--line)}
 .game.done.hit .rail{background:var(--win)}
 .game.done.miss .rail{background:var(--loss)}
 .game.done.tie .rail{background:var(--flag)}
-.gbody{padding:11px 14px 12px;display:grid;
+.game.done.hit .rail::after{content:"✓"}
+.game.done.miss .rail::after{content:"✕"}
+.game.done.tie .rail::after{content:"½"}
+/* a finished game drops to greyscale — only the result keeps its colour
+   (the status cell, and the who-picked-which-side list below the teams) */
+.game.done .gmeta,.game.done .matchup{filter:grayscale(1)}
+.gbody{padding:11px 14px 12px 11px;display:grid;
   grid-template-columns:1fr auto;gap:10px 18px;align-items:center}
 .gmeta{grid-column:1/-1;display:flex;align-items:center;gap:10px;flex-wrap:wrap;
   font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:.04em}
@@ -1015,7 +1026,7 @@ details[open] summary::before{content:"▾ "}
 
 <script>
 /* Shown in the footer so you can tell at a glance which build is live. */
-var BUILD = "v45 · 11 Sep";
+var BUILD = "v46 · 11 Sep";
 
 var T = {
   ARI:["Arizona","Cardinals","#97233F"], ATL:["Atlanta","Falcons","#A71930"],
