@@ -1032,7 +1032,7 @@ details[open] summary::before{content:"▾ "}
 
 <script>
 /* Shown in the footer so you can tell at a glance which build is live. */
-var BUILD = "v52 · 13 Sep";
+var BUILD = "v53 · 13 Sep";
 
 var T = {
   ARI:["Arizona","Cardinals","#97233F"], ATL:["Atlanta","Falcons","#A71930"],
@@ -1899,6 +1899,34 @@ function parseCSV(txt){
 var WALL = [], REACTS = {};
 var LATE = 0;   /* picks ignored because the slip landed after kickoff */
 
+/* Results published from THIS device, held until the spreadsheet shows them.
+   Google serves the published sheet from a cache, so for a few minutes after
+   publishing, a read can still return the row from before it — and in that
+   older row the newly decided games read "-", which clears a winner. Without
+   this, a sync in that window wipes results the commissioner just entered. */
+var PENDRES = {};
+try { PENDRES = JSON.parse(localStorage.getItem("tsh.pendres") || "{}"); } catch(e){}
+function savePendRes(){
+  try { localStorage.setItem("tsh.pendres", JSON.stringify(PENDRES)); } catch(e){}
+}
+
+/* Apply one week's results payload: "1=SEA@1|2=-@1|..." — team, TIE, or "-"
+   for undecided, each optionally followed by @ and what the game is worth. */
+function applyResults(rw, body){
+  body.split("|").forEach(function(part){
+    var kv = part.split("="); if(kv.length < 2) return;
+    var bits = kv[1].split("@");
+    var g = gameById(rw, "w" + rw.n + "-" + kv[0]); if(!g) return;
+    var win = bits[0];
+    g.winner = (win === "-" || !win) ? ""
+      : (win === "TIE" || T[win]) ? win : g.winner;
+    if(bits[1] !== undefined){
+      var p = parseFloat(bits[1]);
+      if(!isNaN(p) && p >= 0) g.pts = p;
+    }
+  });
+}
+
 function gameById(w, id){
   for(var i = 0; i < w.games.length; i++) if(w.games[i].id === id) return w.games[i];
   return null;
@@ -1919,7 +1947,7 @@ function applyRows(rows){
   var iName = col("name"), iPicks = col("picks"),
       iWeek = col("week"), iTime = col("timestamp");
   if(iName < 0 || iPicks < 0) return 0;
-  var n = 0, wall = [], reacts = {};
+  var n = 0, wall = [], reacts = {}, seenRes = {};
 
   /* A later slip must overwrite an earlier one game by game — that is the whole
      rule: your last pick before kickoff is the one that counts. Google appends
@@ -1960,18 +1988,9 @@ function applyRows(rows){
       if((S.resultsBy || []).indexOf(who) < 0) continue;
       if(dirty) continue;
       var rw = wk(+mR[1]); if(!rw) continue;
-      mR[2].split("|").forEach(function(part){
-        var kv = part.split("="); if(kv.length < 2) return;
-        var bits = kv[1].split("@");
-        var g = gameById(rw, "w" + rw.n + "-" + kv[0]); if(!g) return;
-        var win = bits[0];
-        g.winner = (win === "-" || !win) ? ""
-          : (win === "TIE" || T[win]) ? win : g.winner;
-        if(bits[1] !== undefined){
-          var p = parseFloat(bits[1]);
-          if(!isNaN(p) && p >= 0) g.pts = p;
-        }
-      });
+      /* rows arrive oldest first, so the last one seen for a week is newest */
+      seenRes[rw.n] = mR[2];
+      applyResults(rw, mR[2]);
       continue;
     }
 
@@ -2018,6 +2037,21 @@ function applyRows(rows){
     if(iTime > -1 && row[iTime]) w.subAt[who] = row[iTime];
     n++;
   }
+  /* Results this device published win over the sheet until the sheet shows
+     them, so a cached older row cannot clear them. The hold is dropped the
+     moment the sheet matches, and expires after six hours either way. */
+  Object.keys(PENDRES).forEach(function(wn){
+    /* never step on edits in progress — same rule as the rows above */
+    if(dirty) return;
+    var p = PENDRES[wn];
+    if(!p || !p.body){ delete PENDRES[wn]; return; }
+    if(Date.now() - p.at > 6 * 3600 * 1000){ delete PENDRES[wn]; return; }
+    if(seenRes[wn] === p.body){ delete PENDRES[wn]; return; }
+    var rw = wk(+wn);
+    if(rw) applyResults(rw, p.body);
+  });
+  savePendRes();
+
   WALL = wall.reverse();   /* newest first */
   REACTS = reacts;
   LATE = late;
@@ -2518,6 +2552,14 @@ $("#btnResults").addEventListener("click", async function(){
   b.disabled = true; ps.textContent = "Publishing…";
   try {
     await sendToForm("RESULTS", resultsPayload(w), by);
+    /* hold onto what was just published until the sheet shows it back */
+    PENDRES[w.n] = {
+      body: resultsPayload(w).replace(/^RESULTS\[W\d+\]\s*/, ""),
+      at: Date.now()
+    };
+    savePendRes();
+    setTimeout(syncPicks, 15000);
+    setTimeout(syncPicks, 60000);
     dirty = false;
     $("#saveState").textContent = "Published";
     ps.textContent = "Week " + w.n + " results published as " + by +
