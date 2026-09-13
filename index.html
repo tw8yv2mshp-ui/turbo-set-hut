@@ -113,6 +113,10 @@ h1 .hut::after{content:"";position:absolute;left:0;right:.06em;bottom:.08em;
   text-transform:uppercase;font-variant-numeric:tabular-nums;
   color:var(--board-gold)}
 .strip .v.urgent{color:#FF9159}
+/* the leader reads as a link into the standings */
+.strip .leadbtn{text-align:left;padding:0;cursor:pointer;
+  border-bottom:1.5px solid transparent}
+.strip .leadbtn:hover{border-bottom-color:var(--board-gold)}
 .strip .sub{display:block;font-family:var(--mono);font-size:10px;
   color:var(--board-muted);letter-spacing:.04em;margin-top:5px;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -287,15 +291,12 @@ section[id^="view-"]{scroll-margin-top:56px;padding-top:20px}
 .tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--flag)}
 .tab:hover{color:var(--ink)}
 /* Four tabs, one row, whatever the phone's width: they share the space evenly
-   and the labels shorten rather than wrapping. The default must come BEFORE
-   the media query or it would win on ties and blank both labels out. */
-.tab .abbr{display:none}
+   and never wrap. The labels are short enough now to be the same on every
+   screen, so there is nothing to swap out. */
 @media(max-width:620px){
   .tabs{flex-wrap:nowrap}
   .tab{flex:1 1 0;min-width:0;text-align:center;white-space:nowrap;
     font-size:15px;padding:11px 4px 9px;letter-spacing:0}
-  .tab .full{display:none}
-  .tab .abbr{display:inline}
 }
 
 section[hidden]{display:none}
@@ -366,6 +367,11 @@ h2{font-size:36px;font-weight:700;letter-spacing:-.005em;line-height:1.05}
 .pts{font-weight:600;color:var(--muted)}
 .game.tri .pts{color:var(--flag-ink)}
 .lockchip{font-weight:600;text-transform:uppercase;letter-spacing:.1em}
+/* being played now — gold, and its row is not dimmed */
+.lockchip.live{background:var(--flag);color:#fff;padding:2px 7px;
+  letter-spacing:.08em}
+/* over, waiting on the commissioner to enter who won */
+.lockchip.wait{border:1px solid var(--line);padding:2px 6px;color:var(--muted)}
 .matchup{display:flex;align-items:stretch;gap:8px;min-width:0}
 .team{flex:1;display:flex;align-items:center;gap:9px;min-width:0;
   padding:9px 11px;border:1.5px solid var(--line-soft);background:var(--ground);
@@ -773,10 +779,10 @@ details[open] summary::before{content:"▾ "}
 <div class="wrap">
 
 <nav class="tabs" role="tablist">
-  <button class="tab" role="tab" data-view="picks" aria-selected="true"><span class="full">This Week</span><span class="abbr">Week</span></button>
-  <button class="tab" role="tab" data-view="standings" aria-selected="false"><span class="full">Standings</span><span class="abbr">Table</span></button>
-  <button class="tab" role="tab" data-view="rules" aria-selected="false"><span class="full">Rules</span><span class="abbr">Rules</span></button>
-  <button class="tab" role="tab" data-view="comm" aria-selected="false"><span class="full">Commissioner</span><span class="abbr">Admin</span></button>
+  <button class="tab" role="tab" data-view="picks" aria-selected="true">Week</button>
+  <button class="tab" role="tab" data-view="standings" aria-selected="false">Standings</button>
+  <button class="tab" role="tab" data-view="rules" aria-selected="false">Rules</button>
+  <button class="tab" role="tab" data-view="comm" aria-selected="false">Admin</button>
 </nav>
 
 <header class="marquee">
@@ -796,7 +802,7 @@ details[open] summary::before{content:"▾ "}
       <div><span class="k">Week</span><span class="v" id="stWeek">&mdash;</span></div>
       <div><span class="k">Next Lock</span><span class="v" id="stNext">&mdash;</span><span class="sub" id="stNextGame"></span></div>
       <div><span class="k">Points On The Table</span><span class="v" id="stPts">&mdash;</span></div>
-      <div><span class="k">Leader</span><span class="v" id="stLead">&mdash;</span></div>
+      <div><span class="k">Leader</span><button class="v leadbtn" id="stLead" title="See the standings">&mdash;</button></div>
     </div>
     <div class="board-art" id="boardArt">
       <img id="heroImg" src="hero.jpeg" width="928" height="1145"
@@ -1026,7 +1032,7 @@ details[open] summary::before{content:"▾ "}
 
 <script>
 /* Shown in the footer so you can tell at a glance which build is live. */
-var BUILD = "v50 · 11 Sep";
+var BUILD = "v52 · 13 Sep";
 
 var T = {
   ARI:["Arizona","Cardinals","#97233F"], ATL:["Atlanta","Falcons","#A71930"],
@@ -1230,6 +1236,11 @@ function until(ts){
 /* ---------- scoring ---------- */
 var PERFECT_BONUS = 3;
 
+/* Roughly how long an NFL game runs. The page never learns a score — it knows
+   kickoff times and whether a winner has been entered — so "in progress" is an
+   estimate off the clock, not live game data. */
+var GAME_RUN = 3.5 * 3600 * 1000;
+
 function standings(){
   var rows = S.players.map(function(p){
     return { name:p, pts:0, right:0, graded:0, last:0, perfect:0 };
@@ -1359,6 +1370,10 @@ function renderWeek(){
 
 function gameRow(g, w, mine){
   var lk = locked(g);
+  /* kicked off with no winner entered yet: either still being played, or over
+     and waiting on the commissioner */
+  var live = lk && !g.winner &&
+    (Date.now() - new Date(g.kick).getTime()) < GAME_RUN;
   /* A finished game reports the result on its rail: green if the pick that
      actually scored was right, red if wrong, gold for a tie. The pick that
      scored is the spreadsheet's (late picks are already filtered out of it),
@@ -1373,7 +1388,9 @@ function gameRow(g, w, mine){
       cls += g.winner === "TIE" ? " tie" : (mypick === g.winner ? " hit" : " miss");
     }
   } else if(lk){
-    cls += " locked";
+    /* a game being played is not dimmed — it is the most interesting row on
+       the page at that moment */
+    cls += live ? " live" : " locked";
   }
   var row = el("div", cls);
   row.appendChild(el("div","rail"));
@@ -1386,7 +1403,9 @@ function gameRow(g, w, mine){
   if(g.winner === "TIE") meta.appendChild(el("span","lockchip","Final · tie · half points"));
   else if(g.winner) meta.appendChild(el("span","lockchip",
     "Final · " + (T[g.winner] ? T[g.winner][1] : g.winner) + " won"));
-  else if(lk) meta.appendChild(el("span","lockchip","Locked"));
+  else if(lk) meta.appendChild(live
+    ? el("span","lockchip live","Game in progress")
+    : el("span","lockchip wait","Pending outcome submission"));
   body.appendChild(meta);
 
   var mu = el("div","matchup");
@@ -2251,16 +2270,30 @@ function show(v){
   if(v === "comm" && unlocked) renderComm();
   renderBar();
 }
+/* one way into a tab, so the nav and any shortcut to a tab behave the same:
+   each tab is its own page, so it starts at the top */
+function goTab(v){
+  show(v);
+  window.scrollTo({ top:0, behavior:"auto" });
+}
 document.querySelectorAll(".tab").forEach(function(t){
-  t.addEventListener("click", function(){
-    show(t.dataset.view);
-    /* each tab is its own page, so start at the top of it */
-    window.scrollTo({ top:0, behavior:"auto" });
-  });
+  t.addEventListener("click", function(){ goTab(t.dataset.view); });
 });
+/* the leader in the scoreboard readout is a shortcut to the table */
+$("#stLead").addEventListener("click", function(){ goTab("standings"); });
 
 /* ---------- commissioner ---------- */
-function mark(){ dirty = true; $("#saveState").textContent = "Unsaved changes"; }
+/* Publish is only live when there is something new to publish: it greys out
+   after a successful publish and comes back the moment another result changes. */
+function syncPublish(){
+  var b = document.getElementById("btnResults");
+  if(b) b.disabled = !dirty;
+}
+function mark(){
+  dirty = true;
+  $("#saveState").textContent = "Unsaved changes";
+  syncPublish();
+}
 
 function renderComm(){
   var sel = $("#commWeekSel");
@@ -2364,7 +2397,7 @@ $("#btnCode").addEventListener("click", function(){
     unlocked = true; $("#commGate").hidden = true; $("#commPanel").hidden = false;
     $("#formState").textContent = S.form.action ? "Connected" : "Not connected";
     $("#csvIn").value = S.picksCsv || "";
-    renderComm(); syncPicks();
+    renderComm(); syncPicks(); syncPublish();
   } else notice("Wrong code", "Ask Ricardo. This code only keeps cousins from editing the schedule by accident — it is not security.");
 });
 $("#codeIn").addEventListener("keydown", function(e){ if(e.key==="Enter") $("#btnCode").click(); });
@@ -2493,7 +2526,8 @@ $("#btnResults").addEventListener("click", async function(){
   } catch(e){
     ps.textContent = "Could not publish — " + ((e && e.message) || "try again");
   }
-  b.disabled = false;
+  /* a failed publish leaves the change unsaved, so the button stays live to retry */
+  syncPublish();
 });
 
 /* Rebuild the whole page with the current league state swapped in. */
