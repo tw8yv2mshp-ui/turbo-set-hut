@@ -114,7 +114,7 @@ h1 .hut::after{content:"";position:absolute;left:0;right:.06em;bottom:.08em;
   color:var(--board-gold)}
 .strip .v.urgent{color:#FF9159}
 /* the leader reads as a link into the standings */
-.strip .leadbtn{text-align:left;padding:0;cursor:pointer;
+.strip .leadbtn{text-align:left;padding:0;cursor:pointer;text-transform:none;
   border-bottom:1.5px solid transparent}
 .strip .leadbtn:hover{border-bottom-color:var(--board-gold)}
 .strip .sub{display:block;font-family:var(--mono);font-size:10px;
@@ -165,7 +165,7 @@ h1 .hut::after{content:"";position:absolute;left:0;right:.06em;bottom:.08em;
 .whobar .lbl{font-family:var(--disp);font-size:27px;font-weight:700;line-height:1;
   text-transform:uppercase;letter-spacing:.01em}
 #whoSel{font-family:var(--disp);font-size:25px;font-weight:700;line-height:1;
-  text-transform:uppercase;letter-spacing:.01em;padding:9px 12px;width:auto;
+  letter-spacing:.01em;padding:9px 12px;width:auto;
   min-width:240px;max-width:none;border:2.5px solid var(--ink);background:var(--surface)}
 #whoSel:invalid,#whoSel[data-empty="1"]{border-color:var(--flag);color:var(--flag-ink)}
 .whobar .hint{font-family:var(--mono);font-size:11px;color:var(--muted);
@@ -197,7 +197,7 @@ h1 .hut::after{content:"";position:absolute;left:0;right:.06em;bottom:.08em;
   border-right:1px solid var(--line-soft);white-space:nowrap;text-align:center}
 .allgrid thead th{position:sticky;top:0;background:var(--surface-2);
   font-family:var(--disp);font-size:15px;font-weight:700;letter-spacing:.01em;
-  border-bottom:2px solid var(--ink);z-index:1}
+  text-transform:none;border-bottom:2px solid var(--ink);z-index:1}
 .allgrid th.g,.allgrid td.g{text-align:left;position:sticky;left:0;
   background:var(--surface);font-family:var(--disp);font-size:15px;
   font-weight:700;z-index:1}
@@ -232,10 +232,15 @@ h1 .hut::after{content:"";position:absolute;left:0;right:.06em;bottom:.08em;
   font-family:var(--disp);font-size:11px;font-weight:800;line-height:1}
 .post .line{flex:1 1 220px;min-width:0;font-size:14.5px}
 .post .from{font-family:var(--disp);font-size:17px;font-weight:700;
-  text-transform:uppercase;letter-spacing:.01em;margin-right:7px}
+  letter-spacing:.01em;margin-right:7px}
 .post .msg{overflow-wrap:anywhere}
 .post .at-who{font-family:var(--mono);font-size:12px;font-weight:600;
   color:var(--flag-ink);margin-right:6px;white-space:nowrap}
+/* a post written since this device last looked at the wall */
+.newdot{width:8px;height:8px;border-radius:50%;background:#2F7FE8;flex:none;
+  align-self:center;margin-right:-3px}
+.wall-head .newcount{font-family:var(--mono);font-size:10px;font-weight:700;
+  letter-spacing:.12em;text-transform:uppercase;color:#2F7FE8;white-space:nowrap}
 .post .when{font-family:var(--mono);font-size:10px;color:var(--muted);
   letter-spacing:.06em;white-space:nowrap;flex:none;align-self:center}
 .post.mine{background:var(--surface-2)}
@@ -830,6 +835,7 @@ details[open] summary::before{content:"▾ "}
   <div class="wall-head">
     <h2>The Wall</h2>
     <span class="n" id="wallCount"></span>
+    <span class="newcount" id="wallNew"></span>
     <span class="wall-tools">
       <button class="refresh" id="btnWallSize">Expand</button>
       <button class="refresh" id="btnWallRefresh">Refresh</button>
@@ -948,6 +954,15 @@ details[open] summary::before{content:"▾ "}
     </div>
     <p class="lede" style="font-size:15px;margin-top:8px" id="pubHelp">Results go into the league spreadsheet, so every phone picks them up within a few minutes. Nothing to upload and nothing to redeploy.</p>
 
+    <div class="window-head"><span class="name">This week's email</span><span class="rule"></span></div>
+    <p class="lede" style="font-size:15px">Writes the week up from the real results &mdash; the table, who climbed, how the family's teams did, and what is worth watching next week. Publish Monday night's result first, then paste this into Gmail and use <b>Schedule send</b> if you want it to land Tuesday morning.</p>
+    <div class="row">
+      <button class="btn sm" id="btnEmail">Write this week's email</button>
+      <button class="btn ghost sm" id="btnEmailCopy" hidden>Copy</button>
+      <span class="eyebrow" id="emailState"></span>
+    </div>
+    <div class="slip" id="emailOut" hidden></div>
+
     <details style="margin-top:30px">
       <summary>Schedule and setup</summary>
       <div style="padding-top:18px">
@@ -1037,7 +1052,7 @@ details[open] summary::before{content:"▾ "}
 
 <script>
 /* Shown in the footer so you can tell at a glance which build is live. */
-var BUILD = "v55 · 13 Sep";
+var BUILD = "v56 · 13 Sep";
 
 var T = {
   ARI:["Arizona","Cardinals","#97233F"], ATL:["Atlanta","Falcons","#A71930"],
@@ -1246,7 +1261,7 @@ var PERFECT_BONUS = 3;
    estimate off the clock, not live game data. */
 var GAME_RUN = 3.5 * 3600 * 1000;
 
-function standings(){
+function standings(maxWeek){
   var rows = S.players.map(function(p){
     return { name:p, pts:0, right:0, graded:0, last:0, perfect:0 };
   });
@@ -1254,6 +1269,8 @@ function standings(){
   var lg = lastGradedWeek();
 
   S.weeks.forEach(function(w){
+    /* the write-up needs the table as it stood before a given week */
+    if(maxWeek !== undefined && w.n > maxWeek) return;
     var done = w.games.filter(function(g){ return g.winner; });
     if(!done.length) return;
     /* a perfect week only counts once every game in it is final */
@@ -1286,6 +1303,138 @@ function standings(){
     a.name.localeCompare(b.name); });
   return rows;
 }
+/* Who's who, so the weekly write-up can tease the right people about the right
+   teams. Only allegiances the league actually stated — nobody is given a team
+   they never claimed; the rest just get a line of colour. */
+var PEOPLE = {
+  "Ernesto": { teams:["CHI"], note:"who was watching the Bears long before the '85 team" },
+  "German":  { teams:["CHI"], note:"who remembers that '85 team just as well" },
+  "David":   { teams:["CHI"], note:"Atlanta postcode, Chicago allegiance" },
+  "Rocio":   { teams:["CHI","CIN"], note:"Bears by birth, Bengals by address" },
+  "Joaquin": { teams:["PIT"], note:"who will not be quiet about it" },
+  "Amaia":   { teams:[], note:"oldest of the grandkids" },
+  "Sandra":  { teams:[], note:"holding it down in Pittsburgh" },
+  "Ricardo": { teams:[], note:"the commissioner himself" },
+  "Jodi":    { teams:[], note:"Arizona by way of San Diego" },
+  "Nathan":  { teams:[], note:"who watches every game there is" },
+  "Marisol": { teams:[], note:"with a nearly-one-year-old in the house" }
+};
+
+function ordinal(n){
+  var s = ["th","st","nd","rd"], v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+function fansOf(ab){
+  return S.players.filter(function(p){
+    var e = PEOPLE[p];
+    return e && e.teams && e.teams.indexOf(ab) > -1;
+  });
+}
+function listNames(a){
+  if(!a.length) return "";
+  if(a.length === 1) return a[0];
+  return a.slice(0, -1).join(", ") + " and " + a[a.length - 1];
+}
+
+/* The week, written up from what actually happened: the table, who moved, how
+   the family's teams did, and what is worth watching next week. */
+function weeklyEmail(w){
+  var after = standings(w.n), before = standings(w.n - 1), first = w.n <= 1;
+  var wasRank = {}, wasPts = {};
+  before.forEach(function(r, i){ wasRank[r.name] = i + 1; wasPts[r.name] = r.pts; });
+
+  var rows = after.map(function(r, i){
+    return { name:r.name, total:r.pts, rank:i + 1,
+             week:r.pts - (wasPts[r.name] || 0), was:wasRank[r.name] || 0 };
+  });
+  var decided = w.games.filter(function(g){ return g.winner; });
+  var onTable = decided.reduce(function(a, g){ return a + g.pts; }, 0);
+  var best = rows.slice().sort(function(a, b){ return b.week - a.week; })[0];
+  var climb = rows.slice().sort(function(a, b){
+    return (b.was - b.rank) - (a.was - a.rank);
+  })[0];
+  var leader = rows[0], last = rows[rows.length - 1];
+  var swept = rows.filter(function(r){ return r.week >= onTable + PERFECT_BONUS; });
+
+  var subject;
+  if(swept.length) subject = "Week " + w.n + ": " + swept[0].name + " ran the table";
+  else if(!first && leader.was && leader.was !== 1)
+    subject = "Week " + w.n + ": " + leader.name + " takes over";
+  else if(rows[1] && leader.total - rows[1].total <= 1)
+    subject = "Week " + w.n + ": " + leader.name + " by a whisker";
+  else subject = "Week " + w.n + ": " + leader.name + " out in front";
+
+  var L = [];
+  L.push("Familia,");
+  L.push("");
+  L.push("Week " + w.n + " is in the books — " + decided.length + " of " +
+    w.games.length + " games counted, " + onTable + " points on the table.");
+  L.push("");
+  L.push("THE TABLE");
+  rows.forEach(function(r){
+    var move = (!first && r.was && r.was !== r.rank)
+      ? "   (" + (r.was > r.rank ? "up from " : "down from ") + ordinal(r.was) + ")"
+      : "";
+    L.push("  " + ordinal(r.rank) + "  " + r.name + " — " + r.total + move);
+  });
+  L.push("");
+  L.push("THE WEEK");
+  if(best){
+    var bn = PEOPLE[best.name] && PEOPLE[best.name].note;
+    L.push("  Best week: " + best.name + " with " + best.week +
+      (bn ? " — " + bn + "." : "."));
+  }
+  if(swept.length){
+    L.push("  " + listNames(swept.map(function(r){ return r.name; })) +
+      " ran the whole slate. Three bonus points, and bragging rights until somebody matches it.");
+  }
+  if(!first && climb && climb.was - climb.rank > 0){
+    L.push("  Biggest jump: " + climb.name + ", " + ordinal(climb.was) +
+      " up to " + ordinal(climb.rank) + ".");
+  }
+  if(last) L.push("  Propping up the table: " + last.name + " on " + last.total +
+    ". Long season yet.");
+
+  var fam = [];
+  decided.forEach(function(g){
+    [g.away, g.home].forEach(function(ab){
+      var who = fansOf(ab); if(!who.length || g.winner === "TIE") return;
+      var nm = T[ab] ? T[ab][1] : ab;
+      fam.push(g.winner === ab
+        ? "  The " + nm + " got there. Good week for " + listNames(who) + "."
+        : "  The " + nm + " did not. " + listNames(who) + ", condolences.");
+    });
+  });
+  if(fam.length){
+    L.push("");
+    L.push("AROUND THE FAMILY");
+    fam.slice(0, 6).forEach(function(s){ L.push(s); });
+  }
+
+  var nx = wk(w.n + 1);
+  if(nx){
+    L.push("");
+    L.push("NEXT UP — WEEK " + nx.n);
+    nx.games.filter(function(g){ return g.pts >= 3; }).forEach(function(g){
+      L.push("  " + (T[g.away] ? T[g.away][1] : g.away) + " at " +
+        (T[g.home] ? T[g.home][1] : g.home) + " — worth " + g.pts + ".");
+    });
+    var watch = [];
+    nx.games.forEach(function(g){
+      var who = fansOf(g.away).concat(fansOf(g.home));
+      if(who.length) watch.push("  " + (T[g.away] ? T[g.away][1] : g.away) + " at " +
+        (T[g.home] ? T[g.home][1] : g.home) + " — " + listNames(who) +
+        " will have something to say about this one.");
+    });
+    watch.slice(0, 3).forEach(function(s){ L.push(s); });
+    L.push("");
+    L.push("Picks are open. Each game closes at its own kickoff, and the last slip in before it counts.");
+  }
+  L.push("");
+  L.push("Turbo set… HUT!");
+  return { subject:subject, body:L.join("\n") };
+}
+
 function lastGradedWeek(){
   var n = 0;
   S.weeks.forEach(function(w){
@@ -2070,6 +2219,13 @@ function applyRows(rows){
    arrives from the spreadsheet for real. */
 var PENDING = [];
 try { PENDING = JSON.parse(localStorage.getItem("tsh.pending") || "[]"); } catch(e){}
+
+/* When this device last looked at the wall. Captured once at load, so posts
+   written since then keep their blue dot for the whole visit; the stored value
+   moves forward as soon as they are shown, so a later visit starts clean
+   unless somebody has posted again. */
+var WALL_SEEN = 0;
+try { WALL_SEEN = parseInt(localStorage.getItem("tsh.wallseen") || "0", 10) || 0; } catch(e){}
 function savePending(){
   try { localStorage.setItem("tsh.pending", JSON.stringify(PENDING)); } catch(e){}
 }
@@ -2121,6 +2277,7 @@ function avatarColor(name){
 function renderWall(){
   var host = $("#wallList"), posts = livePosts(), n = posts.length;
   $("#wallCount").textContent = n ? n + (n === 1 ? " post" : " posts") : "";
+  $("#wallNew").textContent = "";
   host.textContent = "";
   if(!n){
     host.appendChild(el("p","wall-empty", S.picksCsv && !IN_ARTIFACT
@@ -2153,6 +2310,8 @@ function renderWall(){
   function postRow(p, isReply){
     var c = el("div","post" + (isReply ? " reply" : "") +
       (p.pending ? " pending" : "") + (p.who === me ? " mine" : ""));
+    /* your own posts are never "new" to you */
+    if(isNew(p)) c.appendChild(el("span","newdot"));
     var av = el("span","avatar", p.who.charAt(0).toUpperCase());
     av.style.background = avatarColor(p.who);
     c.appendChild(av);
@@ -2213,6 +2372,20 @@ function renderWall(){
     return c;
   }
 
+  /* blue dots: anything written since this device last looked, by someone else */
+  function stamp(p){ var t = p.at ? new Date(p.at).getTime() : 0;
+    return isNaN(t) ? 0 : t; }
+  function isNew(p){
+    return !p.pending && p.who !== me && stamp(p) > WALL_SEEN;
+  }
+  var newest = WALL_SEEN, freshN = 0;
+  posts.forEach(function(p){
+    var t = stamp(p);
+    if(t > newest) newest = t;
+    if(isNew(p)) freshN++;
+  });
+  $("#wallNew").textContent = freshN ? freshN + " new" : "";
+
   var list = el("div","posts");
   tops.forEach(function(p){
     list.appendChild(postRow(p, false));
@@ -2221,6 +2394,10 @@ function renderWall(){
     });
   });
   host.appendChild(list);
+  /* they have now been shown, so the next visit starts clean */
+  if(newest > WALL_SEEN){
+    try { localStorage.setItem("tsh.wallseen", String(newest)); } catch(e){}
+  }
 }
 
 /* ---------- replying ---------- */
@@ -2513,6 +2690,30 @@ $("#btnWallRefresh").addEventListener("click", async function(){
   await syncPicks();
   b.textContent = "Refresh";
 });
+$("#btnEmail").addEventListener("click", function(){
+  var w = wk(+$("#commWeekSel").value) || cur();
+  if(!w) return;
+  var m = weeklyEmail(w);
+  $("#emailOut").textContent = "Subject: " + m.subject + "\n\n" + m.body;
+  $("#emailOut").hidden = false;
+  $("#btnEmailCopy").hidden = false;
+  var left = w.games.filter(function(g){ return !g.winner; }).length;
+  $("#emailState").textContent = left
+    ? left + " game" + (left === 1 ? "" : "s") + " still without a result — those are left out"
+    : "Week " + w.n + " is complete";
+});
+$("#btnEmailCopy").addEventListener("click", async function(){
+  var b = this;
+  try { await navigator.clipboard.writeText($("#emailOut").textContent);
+    b.textContent = "Copied"; }
+  catch(e){
+    var r = document.createRange(); r.selectNodeContents($("#emailOut"));
+    var s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
+    b.textContent = "Selected — press ⌘C";
+  }
+  setTimeout(function(){ b.textContent = "Copy"; }, 2400);
+});
+
 $("#btnCsv").addEventListener("click", function(){
   S.picksCsv = $("#csvIn").value.trim();
   mark(); syncNote("Checking…"); syncPicks();
