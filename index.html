@@ -1052,7 +1052,7 @@ details[open] summary::before{content:"▾ "}
 
 <script>
 /* Shown in the footer so you can tell at a glance which build is live. */
-var BUILD = "v58 · 13 Sep";
+var BUILD = "v59 · 13 Sep";
 
 var T = {
   ARI:["Arizona","Cardinals","#97233F"], ATL:["Atlanta","Falcons","#A71930"],
@@ -2243,7 +2243,6 @@ function livePosts(){
 var EMOJI = ["👍","🔥","😂","😮","💀","🏈"];
 var MYREACT = {};   /* my own, shown before Google's copy catches up */
 try { MYREACT = JSON.parse(localStorage.getItem("tsh.reacts") || "{}"); } catch(e){}
-var pickerFor = null;
 
 function reactionsOn(ts){
   var map = Object.assign({}, REACTS[ts] || {});
@@ -2257,7 +2256,6 @@ async function react(ts, emoji){
   var next = (map[me] === emoji) ? "-" : emoji;   /* tapping the same one clears it */
   MYREACT[ts] = next;
   try { localStorage.setItem("tsh.reacts", JSON.stringify(MYREACT)); } catch(e){}
-  pickerFor = null;
   renderWall();
   try {
     await sendToForm("WALL", "REACT[" + ts + "] " + next);
@@ -2344,19 +2342,26 @@ function renderWall(){
         chip.addEventListener("click", function(){ react(p.at, e); });
         bar.appendChild(chip);
       });
-      var add = el("button","rchip radd", pickerFor === p.at ? "×" : "+");
+      /* Opening the picker changes nothing but this one row, so it adds the
+         emoji to this bar directly rather than re-rendering the whole wall —
+         no rebuild, nothing to scroll, and the row stays under the cursor. */
+      var add = el("button","rchip radd","+");
       add.setAttribute("aria-label","Add a reaction");
       add.addEventListener("click", function(){
-        pickerFor = (pickerFor === p.at) ? null : p.at; renderWall();
-      });
-      bar.appendChild(add);
-      if(pickerFor === p.at){
+        var open = bar.querySelectorAll(".rchip.pick");
+        if(open.length){
+          Array.prototype.forEach.call(open, function(x){ x.remove(); });
+          add.textContent = "+";
+          return;
+        }
         EMOJI.forEach(function(e){
           var b2 = el("button","rchip pick", e);
           b2.addEventListener("click", function(){ react(p.at, e); });
           bar.appendChild(b2);
         });
-      }
+        add.textContent = "×";
+      });
+      bar.appendChild(add);
       c.appendChild(bar);
     }
 
@@ -2399,6 +2404,10 @@ function renderWall(){
   });
   host.appendChild(list);
   list.scrollTop = wasAt;
+  /* layout can settle a frame later, so put it back again then */
+  if(wasAt) requestAnimationFrame(function(){
+    if(list.scrollTop !== wasAt) list.scrollTop = wasAt;
+  });
   /* they have now been shown, so the next visit starts clean */
   if(newest > WALL_SEEN){
     try { localStorage.setItem("tsh.wallseen", String(newest)); } catch(e){}
