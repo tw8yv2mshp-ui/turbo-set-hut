@@ -1052,7 +1052,7 @@ details[open] summary::before{content:"▾ "}
 
 <script>
 /* Shown in the footer so you can tell at a glance which build is live. */
-var BUILD = "v57 · 13 Sep";
+var BUILD = "v58 · 13 Sep";
 
 var T = {
   ARI:["Arizona","Cardinals","#97233F"], ATL:["Atlanta","Falcons","#A71930"],
@@ -2278,6 +2278,10 @@ function renderWall(){
   var host = $("#wallList"), posts = livePosts(), n = posts.length;
   $("#wallCount").textContent = n ? n + (n === 1 ? " post" : " posts") : "";
   $("#wallNew").textContent = "";
+  /* reacting or replying re-renders the list, which would drop this
+     scrollbox back to the top — remember where it was */
+  var wasAt = host.querySelector(".posts");
+  wasAt = wasAt ? wasAt.scrollTop : 0;
   host.textContent = "";
   if(!n){
     host.appendChild(el("p","wall-empty", S.picksCsv && !IN_ARTIFACT
@@ -2394,6 +2398,7 @@ function renderWall(){
     });
   });
   host.appendChild(list);
+  list.scrollTop = wasAt;
   /* they have now been shown, so the next visit starts clean */
   if(newest > WALL_SEEN){
     try { localStorage.setItem("tsh.wallseen", String(newest)); } catch(e){}
