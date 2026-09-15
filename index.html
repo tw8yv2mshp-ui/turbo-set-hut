@@ -178,10 +178,10 @@ h1 .hut::after{content:"";position:absolute;left:0;right:.06em;bottom:.08em;
 .sentline::before{content:"✓";font-weight:700;font-size:17px}
 /* who is in for the week, read straight from the spreadsheet */
 .roster{display:flex;flex-wrap:wrap;gap:6px;align-items:center;width:100%;
-  margin-top:14px;padding-top:13px;border-top:1px solid var(--line-soft)}
+  margin-top:12px}
 .roster .rlabel{font-family:var(--mono);font-size:10px;font-weight:600;
   letter-spacing:.14em;text-transform:uppercase;color:var(--muted);
-  flex-basis:100%;margin:0 0 7px;white-space:nowrap}
+  flex-basis:100%;margin:0;white-space:nowrap}
 .chip{font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.03em;
   padding:4px 9px;border:1.5px solid var(--line);color:var(--muted);
   white-space:nowrap;cursor:default}
@@ -1058,7 +1058,7 @@ details[open] summary::before{content:"▾ "}
 
 <script>
 /* Shown in the footer so you can tell at a glance which build is live. */
-var BUILD = "v62 · 14 Sep";
+var BUILD = "v63 · 14 Sep";
 
 var T = {
   ARI:["Arizona","Cardinals","#97233F"], ATL:["Atlanta","Falcons","#A71930"],
