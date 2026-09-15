@@ -173,9 +173,9 @@ h1 .hut::after{content:"";position:absolute;left:0;right:.06em;bottom:.08em;
 .whobar .hint.error{color:var(--loss);font-weight:600}
 /* the quiet "you are already in" line, for every visit after the one where
    they actually sent something */
-.sentline{flex-basis:100%;margin:10px 0 0;font-family:var(--mono);font-size:11.5px;
-  letter-spacing:.04em;color:var(--win);display:flex;align-items:center;gap:7px}
-.sentline::before{content:"✓";font-weight:700;font-size:13px}
+.sentline{flex-basis:100%;margin:12px 0 0;font-family:var(--body);font-size:15.5px;
+  font-weight:600;color:var(--win);display:flex;align-items:center;gap:8px}
+.sentline::before{content:"✓";font-weight:700;font-size:17px}
 /* who is in for the week, read straight from the spreadsheet */
 .roster{display:flex;flex-wrap:wrap;gap:6px;align-items:center;width:100%;
   margin-top:14px;padding-top:13px;border-top:1px solid var(--line-soft)}
@@ -1058,7 +1058,7 @@ details[open] summary::before{content:"▾ "}
 
 <script>
 /* Shown in the footer so you can tell at a glance which build is live. */
-var BUILD = "v60 · 14 Sep";
+var BUILD = "v61 · 14 Sep";
 
 var T = {
   ARI:["Arizona","Cardinals","#97233F"], ATL:["Atlanta","Falcons","#A71930"],
