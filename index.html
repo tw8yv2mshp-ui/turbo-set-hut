@@ -882,7 +882,7 @@ details[open] summary::before{content:"▾ "}
     <table>
       <thead><tr>
         <th></th><th>Player</th><th class="barcell">Season</th>
-        <th>Correct</th><th>Hit&nbsp;%</th><th>Perfect</th><th>Last&nbsp;Wk</th><th>Points</th>
+        <th>Points</th><th>Correct</th><th>Hit&nbsp;%</th><th>Perfect</th><th>Last&nbsp;Wk</th>
       </tr></thead>
       <tbody id="standBody"></tbody>
     </table>
@@ -1058,7 +1058,7 @@ details[open] summary::before{content:"▾ "}
 
 <script>
 /* Shown in the footer so you can tell at a glance which build is live. */
-var BUILD = "v66 · 20 Sep";
+var BUILD = "v67 · 20 Sep";
 
 var T = {
   ARI:["Arizona","Cardinals","#97233F"], ATL:["Atlanta","Falcons","#A71930"],
@@ -1755,13 +1755,14 @@ function renderStandings(){
     var bc = el("td","barcell"), m = el("div","meter"), fill = el("i");
     fill.style.width = (r.pts/max*100 || 0) + "%"; m.appendChild(fill);
     bc.appendChild(m); tr.appendChild(bc);
+    /* the season total leads the numbers — it is the one people scan for */
+    tr.appendChild(el("td","total", (r.pts % 1 ? r.pts.toFixed(1) : String(r.pts))));
     /* half-credit from ties means this can land on a .5 */
     var rightTxt = (r.right % 1 ? r.right.toFixed(1) : String(r.right));
     tr.appendChild(el("td",null, r.graded ? rightTxt + "/" + r.graded : "—"));
     tr.appendChild(el("td",null, r.graded ? Math.round(r.right/r.graded*100)+"%" : "—"));
     tr.appendChild(el("td",null, r.perfect ? "★ " + r.perfect : (any ? "0" : "—")));
     tr.appendChild(el("td",null, lg ? (r.last % 1 ? r.last.toFixed(1) : String(r.last)) : "—"));
-    tr.appendChild(el("td","total", (r.pts % 1 ? r.pts.toFixed(1) : String(r.pts))));
     body.appendChild(tr);
   });
 }
