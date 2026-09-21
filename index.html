@@ -1058,7 +1058,7 @@ details[open] summary::before{content:"▾ "}
 
 <script>
 /* Shown in the footer so you can tell at a glance which build is live. */
-var BUILD = "v67 · 20 Sep";
+var BUILD = "v68 · 20 Sep";
 
 var T = {
   ARI:["Arizona","Cardinals","#97233F"], ATL:["Atlanta","Falcons","#A71930"],
@@ -1130,7 +1130,7 @@ function dark(hex){ var r=parseInt(hex.substr(1,2),16),g=parseInt(hex.substr(3,2
   b=parseInt(hex.substr(5,2),16); return (0.299*r+0.587*g+0.114*b) < 150; }
 
 var S = JSON.parse($("#league-state").textContent);
-var me = null, myPicks = {}, submitted = {}, dirty = false, unlocked = false;
+var me = null, myPicks = {}, submitted = {}, dirty = false, unlocked = false, commPinned = false;
 try {
   me = localStorage.getItem("tsh.me");
   myPicks = JSON.parse(localStorage.getItem("tsh.picks") || "{}");
@@ -2560,13 +2560,29 @@ function mark(){
   syncPublish();
 }
 
+/* Which week the results panel opens on: the latest one that has kicked off
+   but still has games with nobody marked as winning — which is the week
+   anybody coming here to enter results means. Failing that, the week on
+   screen. Touching the dropdown pins the choice for the rest of the visit. */
+function resultsWeek(){
+  var pick = 0;
+  weekList().forEach(function(w){
+    if(!w.games.length) return;
+    var started = w.games.some(function(g){ return locked(g); });
+    var open = w.games.some(function(g){ return !g.winner; });
+    if(started && open) pick = w.n;
+  });
+  if(pick) return pick;
+  var c = cur();
+  return c ? c.n : S.currentWeek;
+}
 function renderComm(){
   var sel = $("#commWeekSel");
   sel.textContent = "";
   S.weeks.forEach(function(w){
     sel.appendChild(new Option("Week " + w.n, String(w.n)));
   });
-  sel.value = String(S.currentWeek);
+  sel.value = String(commPinned ? S.currentWeek : resultsWeek());
   if(!sel.value && sel.options.length) sel.value = sel.options[0].value;
   var w = wk(+sel.value);
   var host = $("#commGames"); host.textContent = "";
@@ -2584,6 +2600,8 @@ function renderComm(){
       var b = el("button",null,ab);
       if(g.winner === ab) b.classList.add("on");
       b.addEventListener("click", function(){
+        /* marking a winner can complete the week — hold the panel on it */
+        commPinned = true;
         g.winner = (g.winner === ab) ? "" : ab; mark(); renderComm();
         renderStandings(); renderWeek();
       });
@@ -2594,6 +2612,7 @@ function renderComm(){
     var tb = el("button","tie","Tie");
     if(g.winner === "TIE") tb.classList.add("on");
     tb.addEventListener("click", function(){
+      commPinned = true;
       g.winner = (g.winner === "TIE") ? "" : "TIE"; mark(); renderComm();
       renderStandings(); renderWeek();
     });
@@ -2668,11 +2687,13 @@ $("#btnCode").addEventListener("click", function(){
 $("#codeIn").addEventListener("keydown", function(e){ if(e.key==="Enter") $("#btnCode").click(); });
 
 $("#commWeekSel").addEventListener("change", function(){
+  commPinned = true;
   S.currentWeek = +this.value; mark(); renderComm(); renderWeek(); renderStrip();
 });
 $("#btnNewWeek").addEventListener("click", function(){
   var n = Math.max.apply(null, S.weeks.map(function(w){ return w.n; }).concat([0])) + 1;
   S.weeks.push({ n:n, games:[], picks:{} });
+  commPinned = true;
   S.currentWeek = n; mark(); renderComm(); renderWeek(); renderStrip();
   notice("Week " + n + " started", "Paste the slate below, then save and publish.");
 });
@@ -2680,6 +2701,7 @@ $("#btnParse").addEventListener("click", function(){
   var w = wk(+$("#commWeekSel").value); if(!w) return;
   var games = parseSlate($("#pasteIn").value, w.n);
   if(!games.length){ notice("Nothing read", "Each line needs two team names with \"at\" or \"@\" between them, e.g. Sun 9/20 1:00p Bears at Lions."); return; }
+  commPinned = true;
   w.games = games; mark(); renderComm(); renderWeek(); renderStrip();
   notice(games.length + " games loaded", "Check the point values below — Sunday and Monday night were set to 3 automatically.");
   $("#pasteIn").value = "";
